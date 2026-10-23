@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fomod-logger"
+version = "1.0.0"
+description = "Source-complete FOMOD choice logging for Mod Organizer 2"
+requires-python = ">=3.12"
+license = { text = "GPL-3.0-only" }
+authors = [{ name = "sayngwyn" }]
+dependencies = []
+
+[project.optional-dependencies]
+test = [
+  "jsonschema>=4.26,<5",
+  "pytest>=9.1,<10",
+]
+# Developer-only: never packaged. mobase-stubs 2.5.2 is the stub release for MO2 2.5.2 (the type checker's view of
+# mobase); pyright itself is installed separately (1.1.414 was used).
+dev = [
+  "mobase-stubs==2.5.2",
+]
+
+[tool.setuptools]
+package-dir = { "" = "python" }
+
+[tool.setuptools.packages.find]
+where = ["python"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/python"]
+pythonpath = ["python"]
+addopts = "-ra"

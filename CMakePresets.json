@@ -1,0 +1,50 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "release-vs2022-x64",
+      "displayName": "FOMOD Logger release (VS 2022, x64, SDK 10.0.22621.0)",
+      "generator": "Visual Studio 17 2022",
+      "binaryDir": "$env{FOMOD_LOGGER_BUILD_DIR}",
+      "condition": {
+        "type": "allOf",
+        "conditions": [
+          {
+            "type": "notEquals",
+            "lhs": "$env{FOMOD_LOGGER_BUILD_DIR}",
+            "rhs": ""
+          },
+          {
+            "type": "matches",
+            "string": "$env{FOMOD_LOGGER_BUILD_DIR}",
+            "regex": "^[A-Za-z]:[/\\\\]"
+          }
+        ]
+      },
+      "architecture": "x64",
+      "toolset": "v143",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_VERSION": "10.0.22621.0",
+        "CMAKE_INSTALL_PREFIX": "$env{FOMOD_LOGGER_INSTALL_PREFIX}",
+        "Qt6_DIR": "$env{FOMOD_LOGGER_QT6_DIR}",
+        "FOMOD_LOGGER_UIBASE_SOURCE_DIR": "$env{FOMOD_LOGGER_UIBASE_SOURCE_DIR}",
+        "FOMOD_LOGGER_UIBASE_IMPORT_LIBRARY": "$env{FOMOD_LOGGER_UIBASE_IMPORT_LIBRARY}",
+        "FOMOD_LOGGER_UIBASE_COMPANION_DLL": "$env{FOMOD_LOGGER_UIBASE_COMPANION_DLL}",
+        "FOMOD_LOGGER_GIT_COMMIT": "$env{FOMOD_LOGGER_GIT_COMMIT}",
+        "FOMOD_LOGGER_RELEASE_BUILD": true
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "release-vs2022-x64",
+      "configurePreset": "release-vs2022-x64",
+      "configuration": "RelWithDebInfo"
+    }
+  ]
+}

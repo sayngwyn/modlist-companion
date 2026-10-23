@@ -1,0 +1,233 @@
+{
+  "old_source_commit": "44201d70f7c1a6cda55da86458dc5b8b4665c47b",
+  "new_source_commit": "219dd967dea2f0b72a894ed67155b62dd694ebc2",
+  "old_target": "MO2 2.5.2",
+  "new_tag": "v2.6.0-dev.0",
+  "scope": "32 headers recorded by the prior accepted candidate compiler; not a claim of whole-library binary compatibility",
+  "headers": [
+    {
+      "old_path": "src/dllimport.h",
+      "new_path": "include/uibase/dllimport.h",
+      "old_sha256": "c482831ff1acef2c0c0bbdb36d446eb3e2d9b47e1967837fb5c448fc65839774",
+      "new_sha256": "c482831ff1acef2c0c0bbdb36d446eb3e2d9b47e1967837fb5c448fc65839774",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/exceptions.h",
+      "new_path": "include/uibase/exceptions.h",
+      "old_sha256": "203d319220da39ed81391cbce0b365f13b21261ebed0bc9d4b230cb5b9e55426",
+      "new_sha256": "203d319220da39ed81391cbce0b365f13b21261ebed0bc9d4b230cb5b9e55426",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/executableinfo.h",
+      "new_path": "include/uibase/executableinfo.h",
+      "old_sha256": "8fafd3ff4fbba2273ed73ebc83f6d09adf581d28aa703a4917bff6af6df322b8",
+      "new_sha256": "8fafd3ff4fbba2273ed73ebc83f6d09adf581d28aa703a4917bff6af6df322b8",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/formatters.h",
+      "new_path": "include/uibase/formatters.h",
+      "old_sha256": "58be45b2714a83241a8c63226925f436026e4d0b8edffadca3d98c2f7fb27061",
+      "new_sha256": "58be45b2714a83241a8c63226925f436026e4d0b8edffadca3d98c2f7fb27061",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/formatters/enums.h",
+      "new_path": "include/uibase/formatters/enums.h",
+      "old_sha256": "8adba03d343f7f61115206287a6c759e573c8f5e15c8db720c2bda590b8a637c",
+      "new_sha256": "8adba03d343f7f61115206287a6c759e573c8f5e15c8db720c2bda590b8a637c",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/formatters/qt.h",
+      "new_path": "include/uibase/formatters/qt.h",
+      "old_sha256": "fb121b22cbdbafa8751bcc279bdfda5664142c3504c3a0c488dfa84c85b74574",
+      "new_sha256": "fb121b22cbdbafa8751bcc279bdfda5664142c3504c3a0c488dfa84c85b74574",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/formatters/random_access_containers.h",
+      "new_path": "include/uibase/formatters/random_access_containers.h",
+      "old_sha256": "00c7f8a1c18882dc50e19234d63c504f76ffc882e33cc5dbe0748d678c56f4e6",
+      "new_sha256": "00c7f8a1c18882dc50e19234d63c504f76ffc882e33cc5dbe0748d678c56f4e6",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/formatters/strings.h",
+      "new_path": "include/uibase/formatters/strings.h",
+      "old_sha256": "4ad5d8c7539f659e67e25e639bb5a37e225737541b2eb9ea028f37dae26b6b95",
+      "new_sha256": "4ad5d8c7539f659e67e25e639bb5a37e225737541b2eb9ea028f37dae26b6b95",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/game_features/game_feature.h",
+      "new_path": "include/uibase/game_features/game_feature.h",
+      "old_sha256": "5d03bdcf42f2d1d8352556de739d1c42512881653029b4835c91bfa90d4cab0e",
+      "new_sha256": "5d03bdcf42f2d1d8352556de739d1c42512881653029b4835c91bfa90d4cab0e",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/game_features/igamefeatures.h",
+      "new_path": "include/uibase/game_features/igamefeatures.h",
+      "old_sha256": "7bae66eedd5e8d2de9a97e4fb70c64e0d51a207d64884323fe977bdcf4ab5bd8",
+      "new_sha256": "7bae66eedd5e8d2de9a97e4fb70c64e0d51a207d64884323fe977bdcf4ab5bd8",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/game_features/scriptextender.h",
+      "new_path": "include/uibase/game_features/scriptextender.h",
+      "old_sha256": "97ee5442b2e0e13f709f4524acc08ae4007c0a9942087c62ec070be4a3c2a300",
+      "new_sha256": "97ee5442b2e0e13f709f4524acc08ae4007c0a9942087c62ec070be4a3c2a300",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/guessedvalue.h",
+      "new_path": "include/uibase/guessedvalue.h",
+      "old_sha256": "6ffe091363e0cc2601ff4ecb8c28440524c4ddceb0962057d4559a3913adc033",
+      "new_sha256": "6ffe091363e0cc2601ff4ecb8c28440524c4ddceb0962057d4559a3913adc033",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/ifiletree.h",
+      "new_path": "include/uibase/ifiletree.h",
+      "old_sha256": "6f313d02b97020dd2f4adbbb4544ff97a21a8a961dcc58bf0e95cc5bff6533bb",
+      "new_sha256": "6f313d02b97020dd2f4adbbb4544ff97a21a8a961dcc58bf0e95cc5bff6533bb",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/iinstallationmanager.h",
+      "new_path": "include/uibase/iinstallationmanager.h",
+      "old_sha256": "425071269048061294a02f5677ac8b94ce424b87618c5413322d5d01043615e0",
+      "new_sha256": "425071269048061294a02f5677ac8b94ce424b87618c5413322d5d01043615e0",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/imodinterface.h",
+      "new_path": "include/uibase/imodinterface.h",
+      "old_sha256": "3f5bbb66d986b02a89b663c6be1ca6278b5f62ab138be21a5cc834992c010f30",
+      "new_sha256": "3f5bbb66d986b02a89b663c6be1ca6278b5f62ab138be21a5cc834992c010f30",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/imodlist.h",
+      "new_path": "include/uibase/imodlist.h",
+      "old_sha256": "e5d711c42f9a12dc09e056a913970370cb48760830ed1e21971ab412683e1362",
+      "new_sha256": "e5d711c42f9a12dc09e056a913970370cb48760830ed1e21971ab412683e1362",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/imoinfo.h",
+      "new_path": "include/uibase/imoinfo.h",
+      "old_sha256": "73d029bc848758ee15ccf3b346b722e5153b4c06183e3448bf43fcd76043796a",
+      "new_sha256": "074d866334285259b9a42aa5dda0af8150bab844d43dd246763443ee72b3633d",
+      "comparison": "include path only; declarations and inline definitions unchanged"
+    },
+    {
+      "old_path": "src/iplugin.h",
+      "new_path": "include/uibase/iplugin.h",
+      "old_sha256": "6b786e1db8be2096d003c6f66887eed021feef081cde47aa151590655a6fe837",
+      "new_sha256": "6b786e1db8be2096d003c6f66887eed021feef081cde47aa151590655a6fe837",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/iplugindiagnose.h",
+      "new_path": "include/uibase/iplugindiagnose.h",
+      "old_sha256": "6af49d1b9ac560a09e8b44a04d57d09481e400c6255f2e9477883e6bd3adec9e",
+      "new_sha256": "6af49d1b9ac560a09e8b44a04d57d09481e400c6255f2e9477883e6bd3adec9e",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/iplugingame.h",
+      "new_path": "include/uibase/iplugingame.h",
+      "old_sha256": "d7ba797fa69922fc8253ea33214dcd176b97b21ae69a34f55fe260fc0f9a6c39",
+      "new_sha256": "d7ba797fa69922fc8253ea33214dcd176b97b21ae69a34f55fe260fc0f9a6c39",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/iplugininstaller.h",
+      "new_path": "include/uibase/iplugininstaller.h",
+      "old_sha256": "c802cb1ad721f50caef6b60c53765bdea00b746e39b574ac862645b96386de6a",
+      "new_sha256": "c802cb1ad721f50caef6b60c53765bdea00b746e39b574ac862645b96386de6a",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/iplugininstallersimple.h",
+      "new_path": "include/uibase/iplugininstallersimple.h",
+      "old_sha256": "51701cdf56b3607556d4805adc0f97c8e5a455f68383e0a812b3f03e451a416e",
+      "new_sha256": "51701cdf56b3607556d4805adc0f97c8e5a455f68383e0a812b3f03e451a416e",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/ipluginlist.h",
+      "new_path": "include/uibase/ipluginlist.h",
+      "old_sha256": "056c4a25556280a48a34d4ce38bf7843ac2ee4538daa2cf3fd40db7252b69adb",
+      "new_sha256": "056c4a25556280a48a34d4ce38bf7843ac2ee4538daa2cf3fd40db7252b69adb",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/iprofile.h",
+      "new_path": "include/uibase/iprofile.h",
+      "old_sha256": "9d3b68742363cfa071f0dc923b76570ce3b5c5d29bdf94526bc66979e8fd4bca",
+      "new_sha256": "9d3b68742363cfa071f0dc923b76570ce3b5c5d29bdf94526bc66979e8fd4bca",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/isavegame.h",
+      "new_path": "include/uibase/isavegame.h",
+      "old_sha256": "c09e6dcbb4f8be50d7641f569c775e70c9a9676d7a7cb2a3aae44b1e269d3da2",
+      "new_sha256": "c09e6dcbb4f8be50d7641f569c775e70c9a9676d7a7cb2a3aae44b1e269d3da2",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/log.h",
+      "new_path": "include/uibase/log.h",
+      "old_sha256": "e0a1222a7e8f668baa66d3c80514a2642f5ce677c21a1096b3ab244277bd45dc",
+      "new_sha256": "e0a1222a7e8f668baa66d3c80514a2642f5ce677c21a1096b3ab244277bd45dc",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/pluginrequirements.h",
+      "new_path": "include/uibase/pluginrequirements.h",
+      "old_sha256": "a0b3c83108ff7c271eb79c03030762c88b6c8e3ba763603892af77b5ef78593e",
+      "new_sha256": "a0b3c83108ff7c271eb79c03030762c88b6c8e3ba763603892af77b5ef78593e",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/pluginsetting.h",
+      "new_path": "include/uibase/pluginsetting.h",
+      "old_sha256": "fe59d460d55495fbddece3f3dcedca7b3f2c9ab78aebedbbfffbc849c2c68669",
+      "new_sha256": "fe59d460d55495fbddece3f3dcedca7b3f2c9ab78aebedbbfffbc849c2c68669",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/report.h",
+      "new_path": "include/uibase/report.h",
+      "old_sha256": "b3149ea952b994ea6542efacd21e139810926dc273bde96ce79afe28a5fd16de",
+      "new_sha256": "b3149ea952b994ea6542efacd21e139810926dc273bde96ce79afe28a5fd16de",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/scopeguard.h",
+      "new_path": "include/uibase/scopeguard.h",
+      "old_sha256": "c1e771eba4cb168598172d94fca6ad75ab9622dd6d050141807be22213384388",
+      "new_sha256": "c1e771eba4cb168598172d94fca6ad75ab9622dd6d050141807be22213384388",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/utility.h",
+      "new_path": "include/uibase/utility.h",
+      "old_sha256": "d26bbc7da8c14e7c32ae664a3c36da63d8eb4b6aaf80dce9d52a4056174a2f76",
+      "new_sha256": "d26bbc7da8c14e7c32ae664a3c36da63d8eb4b6aaf80dce9d52a4056174a2f76",
+      "comparison": "identical"
+    },
+    {
+      "old_path": "src/versioninfo.h",
+      "new_path": "include/uibase/versioninfo.h",
+      "old_sha256": "557dc3ee48b332a0ee79ddf73e322c16a8b74cd4605be8c4acbfbc50474c6de3",
+      "new_sha256": "557dc3ee48b332a0ee79ddf73e322c16a8b74cd4605be8c4acbfbc50474c6de3",
+      "comparison": "identical"
+    }
+  ]
+}

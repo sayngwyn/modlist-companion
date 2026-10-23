@@ -1,0 +1,28 @@
+Import('qt_env')
+
+env = qt_env.Clone()
+
+env.Uic(env.Glob('*.ui'))
+
+env.AppendUnique(CPPDEFINES = [
+    'INSTALLERFOMOD_LIBRARY',
+    # boost uses things MS C++ is mldly unhappy about.
+    '_SCL_SECURE_NO_WARNINGS'
+])
+
+# can't use appendunique...
+env['CPPPATH'] += [ '.', '../gamefeatures' ]
+
+env.AppendUnique(CPPPATH = [
+    '${BOOSTPATH}'
+])
+
+env.AppendUnique(LIBS = [
+    'shell32'
+])
+
+lib = env.SharedLibrary('fomod_logger', env.Glob('*.cpp'))
+env.InstallModule(lib)
+
+res = env['QT_USED_MODULES']
+Return('res')

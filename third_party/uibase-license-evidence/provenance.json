@@ -1,0 +1,22 @@
+{
+  "review_date": "2026-09-21",
+  "package": "mo2-uibase",
+  "package_version": "2.6.0-dev.0",
+  "upstream_declared_license": "GPL-3.0",
+  "source_tag": "v2.6.0-dev.0",
+  "source_commit": "219dd967dea2f0b72a894ed67155b62dd694ebc2",
+  "registry_repository": "https://github.com/ModOrganizer2/vcpkg-registry",
+  "registry_commit": "2a9bda65de449abf8410d18477cb97417a216db8",
+  "evidence_files": {
+    "vcpkg.json": {
+      "url": "https://raw.githubusercontent.com/ModOrganizer2/vcpkg-registry/2a9bda65de449abf8410d18477cb97417a216db8/ports/mo2-uibase/vcpkg.json",
+      "sha256": "11239e5a0a5aafa5ec26dce40b1e86bad9dcd28f6d638ee27e1d6260b5917f4b"
+    },
+    "portfile.cmake": {
+      "url": "https://raw.githubusercontent.com/ModOrganizer2/vcpkg-registry/2a9bda65de449abf8410d18477cb97417a216db8/ports/mo2-uibase/portfile.cmake",
+      "sha256": "9fd0117ea5a3037b8af35b7e01a90c6f7faf983fd80e79e5ddcb322011e39363"
+    }
+  },
+  "basis": "Official upstream package license declaration for the selected version; original per-file grants and notices remain intact. This record supplies provenance, not a new grant or legal warranty.",
+  "historical_binary_asset": "The release asset API currently returns 404. Builds consume the verified Git source tag, not an unverified downloaded binary."
+}

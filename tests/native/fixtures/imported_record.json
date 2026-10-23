@@ -1,0 +1,98 @@
+{
+ "format": "fomod-companion-imported-choices",
+ "record_version": 1,
+ "instance_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+ "imported_at": "2026-10-21T11:00:00Z",
+ "source_exported_at": "2026-10-21T10:00:00Z",
+ "entry": {
+  "name": "Duplicate Labels",
+  "nexus_id": 1,
+  "version": "1.0",
+  "archive": "Duplicate Labels-1.0.zip",
+  "installed_at": "2026-10-01T12:01:00.000Z",
+  "steps": [
+   {
+    "name": "Main",
+    "skipped": false,
+    "groups": [
+     {
+      "name": "Textures",
+      "type": "SelectExactlyOne",
+      "options": [
+       {
+        "name": "2K",
+        "picked": false,
+        "enabled": true
+       },
+       {
+        "name": "4K",
+        "picked": true,
+        "enabled": true
+       }
+      ]
+     },
+     {
+      "name": "Extras",
+      "type": "SelectAny",
+      "options": [
+       {
+        "name": "Patch",
+        "picked": true,
+        "enabled": true
+       },
+       {
+        "name": "Patch",
+        "picked": false,
+        "enabled": true
+       },
+       {
+        "name": "Forced",
+        "picked": true,
+        "enabled": false
+       },
+       {
+        "name": "Fish & Chips <b>",
+        "picked": true,
+        "enabled": true
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Patches",
+    "skipped": false,
+    "groups": [
+     {
+      "name": "Extras",
+      "type": "SelectAny",
+      "options": [
+       {
+        "name": "Patch",
+        "picked": true,
+        "enabled": true
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Main",
+    "skipped": true,
+    "groups": [
+     {
+      "name": "Textures",
+      "type": "SelectExactlyOne",
+      "options": [
+       {
+        "name": "4K",
+        "picked": false,
+        "enabled": true
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

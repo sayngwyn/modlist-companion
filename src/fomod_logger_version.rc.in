@@ -1,0 +1,35 @@
+#include <windows.h>
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION @FOMOD_LOGGER_VERSION_TUPLE@
+ PRODUCTVERSION @FOMOD_LOGGER_VERSION_TUPLE@
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS VS_FF_DEBUG | VS_FF_PRIVATEBUILD
+#else
+ FILEFLAGS VS_FF_PRIVATEBUILD
+#endif
+ FILEOS VOS_NT_WINDOWS32
+ FILETYPE VFT_DLL
+ FILESUBTYPE 0x0L
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904b0"
+    BEGIN
+      VALUE "CompanyName", "sayngwyn\0"
+      VALUE "FileDescription", "Modlist Companion FOMOD Installer\0"
+      VALUE "FileVersion", "@FOMOD_LOGGER_VERSION@\0"
+      VALUE "InternalName", "fomod_logger\0"
+      VALUE "LegalCopyright", "Copyright (C) 2026 sayngwyn and Mod Organizer 2 contributors\0"
+      VALUE "OriginalFilename", "fomod_logger.dll\0"
+      VALUE "ProductName", "Modlist Companion\0"
+      VALUE "ProductVersion", "@FOMOD_LOGGER_VERSION@\0"
+      VALUE "PrivateBuild", "@FOMOD_LOGGER_GIT_COMMIT@\0"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x0409, 1200
+  END
+END

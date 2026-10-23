@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "event_id": "22222222-2222-4222-8222-222222222222",
+  "started_at": "2026-10-01T12:00:00.000Z",
+  "completed_at": "2026-10-01T12:01:00.000Z",
+  "instance": { "id": "0000000000000000000000000000000000000000000000000000000000000001", "label": "Fixture" },
+  "source": { "archive": "Duplicate Labels-1.0.zip", "reinstallation": false },
+  "mod": { "name": "Duplicate Labels", "version": "1.0", "nexus_id": 1 },
+  "installer": { "name": "FOMOD Logger Native Installer", "version": "1.0.0", "upstream_commit": "unknown" },
+  "steps": [
+    {
+      "id": "step:0",
+      "name": "Main",
+      "visible": true,
+      "groups": [
+        {
+          "id": "step:0/group:0",
+          "name": "Textures",
+          "type": "SelectExactlyOne",
+          "options": [
+            { "id": "step:0/group:0/option:1", "name": "2K", "selected": false, "enabled": true },
+            { "id": "step:0/group:0/option:0", "name": "4K", "selected": true, "enabled": true }
+          ]
+        },
+        {
+          "id": "step:0/group:1",
+          "name": "Extras",
+          "type": "SelectAny",
+          "options": [
+            { "id": "step:0/group:1/option:0", "name": "Patch", "selected": true, "enabled": true },
+            { "id": "step:0/group:1/option:1", "name": "Patch", "selected": false, "enabled": true },
+            { "id": "step:0/group:1/option:2", "name": "Forced", "selected": true, "enabled": false },
+            { "id": "step:0/group:1/option:3", "name": "Fish & Chips <b>", "selected": true, "enabled": true }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "step:1",
+      "name": "Patches",
+      "visible": true,
+      "groups": [
+        {
+          "id": "step:1/group:0",
+          "name": "Extras",
+          "type": "SelectAny",
+          "options": [
+            { "id": "step:1/group:0/option:0", "name": "Patch", "selected": true, "enabled": true }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "step:2",
+      "name": "Main",
+      "visible": false,
+      "groups": [
+        {
+          "id": "step:2/group:0",
+          "name": "Textures",
+          "type": "SelectExactlyOne",
+          "options": [
+            { "id": "step:2/group:0/option:0", "name": "4K", "selected": false, "enabled": true }
+          ]
+        }
+      ]
+    }
+  ]
+}

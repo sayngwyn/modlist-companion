@@ -1,0 +1,64 @@
+{
+  "format": 1,
+  "publication_policy": "Every required archive must be hash-verified by the packager and hosted under owner control beside the binary and corresponding-source archives before publication.",
+  "components": [
+    {
+      "id": "qtbase",
+      "project": "Qt Base",
+      "version": "6.7.1",
+      "filename": "qtbase-everywhere-src-6.7.1.tar.xz",
+      "official_url": "https://download.qt.io/archive/qt/6.7/6.7.1/submodules/qtbase-everywhere-src-6.7.1.tar.xz",
+      "size": 49324536,
+      "sha256": "b7338da1bdccb4d861e714efffaa83f174dfe37e194916bfd7ec82279a6ace19"
+    },
+    {
+      "id": "qtdeclarative",
+      "project": "Qt Declarative",
+      "version": "6.7.1",
+      "filename": "qtdeclarative-everywhere-src-6.7.1.tar.xz",
+      "official_url": "https://download.qt.io/archive/qt/6.7/6.7.1/submodules/qtdeclarative-everywhere-src-6.7.1.tar.xz",
+      "size": 35624448,
+      "sha256": "81135c96ed2f599385b8a68c57f4f438dad193c62f946f5b200a321558fd9f1c"
+    },
+    {
+      "id": "pyqt6",
+      "project": "PyQt6",
+      "version": "6.7.1",
+      "filename": "PyQt6-6.7.1.tar.gz",
+      "official_url": "https://files.pythonhosted.org/packages/d1/f9/b0c2ba758b14a7219e076138ea1e738c068bf388e64eee68f3df4fc96f5a/PyQt6-6.7.1.tar.gz",
+      "size": 1051212,
+      "sha256": "3672a82ccd3a62e99ab200a13903421e2928e399fda25ced98d140313ad59cb9"
+    },
+    {
+      "id": "pyqt6-sip",
+      "project": "PyQt6-sip",
+      "version": "13.8.0",
+      "filename": "PyQt6_sip-13.8.0.tar.gz",
+      "official_url": "https://files.pythonhosted.org/packages/e9/b7/95ac49b181096ef40144ef05aff8de7c9657de7916a70533d202ed9f0fd2/PyQt6_sip-13.8.0.tar.gz",
+      "size": 92264,
+      "sha256": "2f74cf3d6d9cab5152bd9f49d570b2dfb87553ebb5c4919abfde27f5b9fd69d4",
+      "provenance_role": "Locked public source counterpart for the authoritative MO2 pyqt_sip=13.8.0 recipe input. MO2 generated its own PyQt6_sip-13.8.0 source distribution locally with SIP 6.8.6; this public archive is not claimed to be byte-identical to that generated source distribution, and public wheel bytes are not host provenance."
+    },
+    {
+      "id": "sip",
+      "project": "SIP",
+      "version": "6.8.6",
+      "filename": "sip-6.8.6.tar.gz",
+      "official_url": "https://files.pythonhosted.org/packages/6e/52/36987b182711104d5e9f8831dd989085b1241fc627829c36ddf81640c372/sip-6.8.6.tar.gz",
+      "size": 420778,
+      "sha256": "7fc959e48e6ec5d5af8bd026f69f5e24d08b3cb8abb342176f5ab8030cc07d7a",
+      "provenance_role": "Source for the pinned SIP 6.8.6 generator used by the MO2 build recipe."
+    }
+  ],
+  "mo2_pyqt_sip_derivation": {
+    "authority": "MO2 2.5.2 mob.ini and src/tasks/pyqt.cpp",
+    "pins": {
+      "python": "3.12.3",
+      "pyqt": "6.7.1",
+      "pyqt_sip_abi": "13.8.0",
+      "sip_generator": "6.8.6"
+    },
+    "method": "The MO2 build invokes sip-module to generate a local PyQt6_sip-13.8.0 source distribution, then builds and installs it. The host sip.pyd is therefore not expected to hash-match the public cp312 wheel; public wheel bytes are not used as host provenance."
+  },
+  "unresolved_publication_gates": []
+}

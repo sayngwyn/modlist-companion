@@ -1,0 +1,13 @@
+{
+  "comment": "Option paths of duplicate_labels_event.json in event order: [step, group, option, occurrence, selected, enabled, step visible]. Both the Python rule (reviews.py::_option_paths) and the native one (fomodpreviouschoices.cpp) must produce exactly these.",
+  "options": [
+    ["Main", "Textures", "2K", 0, false, true, true],
+    ["Main", "Textures", "4K", 0, true, true, true],
+    ["Main", "Extras", "Patch", 0, true, true, true],
+    ["Main", "Extras", "Patch", 1, false, true, true],
+    ["Main", "Extras", "Forced", 0, true, false, true],
+    ["Main", "Extras", "Fish & Chips <b>", 0, true, true, true],
+    ["Patches", "Extras", "Patch", 0, true, true, true],
+    ["Main", "Textures", "4K", 1, false, true, false]
+  ]
+}

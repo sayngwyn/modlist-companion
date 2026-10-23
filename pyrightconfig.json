@@ -1,0 +1,18 @@
+{
+  "include": ["python"],
+  "pythonVersion": "3.12",
+  "pythonPlatform": "Windows",
+  "typeCheckingMode": "basic",
+  "extraPaths": ["python", "../../MO2-Skyrim-Logger/plugins/plugin_python/libs"],
+  "executionEnvironments": [
+    {
+      "root": "python/fomod_logger_support/viewer",
+      "extraPaths": ["python", "../../MO2-Skyrim-Logger/plugins/plugin_python/libs"],
+      "reportOptionalMemberAccess": "none"
+    },
+    {
+      "root": ".",
+      "extraPaths": ["python", "../../MO2-Skyrim-Logger/plugins/plugin_python/libs"]
+    }
+  ]
+}

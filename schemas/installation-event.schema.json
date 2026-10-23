@@ -1,0 +1,277 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:fomod-logger:schema:installation-event:1",
+  "title": "FOMOD Logger installation event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "started_at",
+    "completed_at",
+    "instance",
+    "source",
+    "mod",
+    "installer",
+    "steps"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "event_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "started_at": { "type": "string", "format": "date-time" },
+    "completed_at": { "type": "string", "format": "date-time" },
+    "instance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "label": { "type": "string" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["archive", "reinstallation"],
+      "properties": {
+        "archive": { "type": "string" },
+        "reinstallation": { "type": "boolean" },
+        "scanned": {
+          "type": "boolean",
+          "description": "True when the mod was already in the list when it was first recorded (a scan), not an install that was seen. The list's change history does not report such a record as a change."
+        },
+        "reconstructed": {
+          "type": "boolean",
+          "description": "True when this event was rebuilt from the mod's download archive and the options picked, instead of being recorded by the installer while the user chose. Absent means it was recorded by the installer."
+        },
+        "reconstruction_notes": {
+          "type": "array",
+          "maxItems": 64,
+          "description": "What a reconstructed event had to assume or could not read (for example that the load order at install time was unknown).",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "mod": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "nexus_id"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string" },
+        "nexus_id": {
+          "type": "integer",
+          "minimum": -9223372036854775808,
+          "maximum": 9223372036854775807
+        }
+      }
+    },
+    "installer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "upstream_commit"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "upstream_commit": {
+          "type": "string",
+          "pattern": "^(?:[0-9a-f]{40}|unknown)$"
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/step" }
+    },
+    "automatic_installs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/automaticInstall" }
+    },
+    "kind": {
+      "description": "Absent (or fomod) for an install recorded through a FOMOD installer. plain for a mod that was not installed through a logged installer: it has no steps, and its version, archive, files and plugins are what was found in the mod's folder (see plain).",
+      "enum": ["fomod", "plain"]
+    },
+    "plain": {
+      "description": "Present exactly when kind is plain.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["origin", "file_count", "files_truncated"],
+      "properties": {
+        "origin": {
+          "description": "install: the plugin saw the mod being installed. scan: the mod was in the list before and was found by Scan existing mods.",
+          "enum": ["install", "scan"]
+        },
+        "game": { "type": "string", "description": "The Nexus Mods address name of the managed game, when known." },
+        "file_count": { "type": "integer", "minimum": 0, "description": "How many files are recorded." },
+        "files_truncated": { "$ref": "#/$defs/filesTruncated" },
+        "files_digest": { "type": "string", "description": "A fingerprint of the recorded file list (case and order ignored): equal digests mean equal lists." },
+        "plugins": {
+          "description": "Each plugin at the root of the mod folder with the masters its header names. masters is absent when the header could not be read.",
+          "type": "array",
+          "maxItems": 512,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "masters": { "$ref": "#/$defs/pluginNames" }
+            }
+          }
+        },
+        "files": {
+          "description": "The recorded files: paths relative to the mod folder, forward slashes, at most 20000 and about 2 MiB of path text. The database keeps them in a table of their own, so a stored event holds only the count and the digest; a history export puts them back.",
+          "type": "array",
+          "maxItems": 20000,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "required_files": {
+      "description": "The FOMOD's requiredInstallFiles: installed whatever the user picks, and belonging to no option. Absent when there are none (or the event predates the field).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["files"],
+      "properties": {
+        "files": { "$ref": "#/$defs/fileEntries" },
+        "files_truncated": { "$ref": "#/$defs/filesTruncated" }
+      }
+    }
+  },
+  "$defs": {
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "visible", "groups"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "visible": { "type": "boolean" },
+        "groups": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/group" }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "visible": { "const": false } },
+            "required": ["visible"]
+          },
+          "then": {
+            "properties": {
+              "groups": {
+                "items": {
+                  "properties": {
+                    "options": {
+                      "items": {
+                        "properties": { "selected": { "const": false } },
+                        "required": ["selected"]
+                      }
+                    }
+                  },
+                  "required": ["options"]
+                }
+              }
+            },
+            "required": ["groups"]
+          }
+        }
+      ]
+    },
+    "group": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "type", "options"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "type": {
+          "enum": [
+            "SelectAtLeastOne",
+            "SelectAtMostOne",
+            "SelectExactlyOne",
+            "SelectAny",
+            "SelectAll"
+          ]
+        },
+        "options": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/option" }
+        }
+      }
+    },
+    "option": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "selected", "enabled"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "selected": { "type": "boolean" },
+        "enabled": { "type": "boolean" },
+        "plugins": { "$ref": "#/$defs/pluginNames" },
+        "masters": { "$ref": "#/$defs/pluginNames" },
+        "detects": { "$ref": "#/$defs/pluginNames" },
+        "files": { "$ref": "#/$defs/fileEntries" },
+        "files_truncated": { "$ref": "#/$defs/filesTruncated" }
+      }
+    },
+    "automaticInstall": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "installed", "plugins", "detects"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "installed": { "type": "boolean" },
+        "plugins": { "$ref": "#/$defs/pluginNames" },
+        "masters": { "$ref": "#/$defs/pluginNames" },
+        "detects": { "$ref": "#/$defs/pluginNames" },
+        "files": { "$ref": "#/$defs/fileEntries" },
+        "files_truncated": { "$ref": "#/$defs/filesTruncated" }
+      }
+    },
+    "pluginNames": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "fileEntries": {
+      "description": "The <file>/<folder> entries the FOMOD defines for this option or automatic install, in the order the installer applies them (ascending priority, then position in the XML). An empty list means it installs nothing; absent means file entries were not recorded (events from before this field existed). The writer keeps at most 2000 per option, 20000 per event and about 2 MiB of entries per event (required files first, then picked options and applied automatic installs, then the rest); when it has to cut, it keeps the entries that win (highest priority, then latest in the XML) and sets files_truncated.",
+      "type": "array",
+      "maxItems": 2000,
+      "items": { "$ref": "#/$defs/fileEntry" }
+    },
+    "fileEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "destination", "resolved", "kind"],
+      "properties": {
+        "source": { "type": "string", "description": "As written in ModuleConfig.xml." },
+        "destination": { "type": "string", "description": "As written in ModuleConfig.xml." },
+        "resolved": {
+          "type": "string",
+          "description": "Where it installs: forward slashes, relative to the mod folder (a leading Data/ is dropped), case kept. Empty means the mod folder itself, and only for a folder; it is also empty when escapes is true."
+        },
+        "escapes": {
+          "type": "boolean",
+          "description": "True when the destination points outside the mod folder ('..', a drive letter, a UNC path); resolved is then empty."
+        },
+        "kind": { "enum": ["file", "folder"] },
+        "priority": { "type": "integer", "description": "The FOMOD priority (0 when absent)." },
+        "order": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Position of the entry in ModuleConfig.xml; breaks priority ties (later wins), also across options."
+        }
+      }
+    },
+    "filesTruncated": {
+      "description": "True when this item's files list was cut at a cap.",
+      "type": "boolean"
+    }
+  }
+}

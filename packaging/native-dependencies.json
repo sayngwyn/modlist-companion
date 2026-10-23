@@ -1,0 +1,19 @@
+{
+  "format": 1,
+  "mo2_abi_target": "2.5.2",
+  "uibase": {
+    "repository": "https://github.com/ModOrganizer2/modorganizer-uibase.git",
+    "commit": "219dd967dea2f0b72a894ed67155b62dd694ebc2",
+    "source_archive_prefix": "external/modorganizer-uibase-219dd967dea2f0b72a894ed67155b62dd694ebc2",
+    "observed_file_grants": [
+      "Some files state GPL-3.0-or-later.",
+      "Many consumed interface headers state LGPL-3.0-or-later."
+    ],
+    "repository_wide_license_status": "upstream_package_declares_GPL-3.0",
+    "publication_gate": "Retain the official version-specific package declaration and original notices, provide exact corresponding source, and qualify the selected headers against the MO2 2.5.2 host. No new upstream permission request is required by this evidence-based project policy.",
+    "source_tag": "v2.6.0-dev.0",
+    "header_directory": "include/uibase",
+    "license_evidence": "third_party/uibase-license-evidence/provenance.json",
+    "binary_inputs_source_commit": "44201d70f7c1a6cda55da86458dc5b8b4665c47b"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "component": "sqlite3.dll",
+  "version": "3.45.1",
+  "source_package": "python-3.12.3-embed-amd64.zip",
+  "source_url": "https://www.python.org/ftp/python/3.12.3/python-3.12.3-embed-amd64.zip",
+  "source_sha256": "38b265fc0612027a126ae54d2485101f041b61893e41ef4f421dee6ac618a99e",
+  "file_sha256": "7da1c4604fc97ba033830a2703d92bb6d10a9bba201ec64d13d5ccbfecd57d49",
+  "install_path": "plugins/fomod_logger_support/native/sqlite3.dll",
+  "purpose": "Private dependency of MO2 Python 3.12.3 _sqlite3.pyd; MO2 2.5.2 omits sqlite3.dll from its bundled runtime."
+}

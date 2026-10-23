@@ -1,0 +1,10 @@
+{
+  "product": "Modlist Companion",
+  "author": "sayngwyn",
+  "public_semver": "1.0.0",
+  "pep440": "1.0.0",
+  "mo2_version": "1.0.0",
+  "windows_file_version": "1,0,0,0",
+  "binary_archive": "modlist-companion-1.0.0.zip",
+  "source_archive": "modlist-companion-1.0.0-source.zip"
+}
