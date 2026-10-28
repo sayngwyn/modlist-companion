@@ -93,12 +93,19 @@ Like the look of this window? Get [Sayngwyn Theme for Mod Organizer 2](https://w
   <img alt="Antler divider" src="https://sayngwyn.com/img/page/divider-light-v4.png">
 </picture></p>
 
+## Credits
+
+- **Mod Organizer 2 team** (Tannin, thosrtanner and contributors) for MO2 and the FOMOD installer this plugin builds on.
+- **aglowinthefield** for FOMOD Plus, whose saved choices the Plus edition reads.
+- **Qt and PyQt** (The Qt Company, Riverbank Computing) for the window.
+- **Python and SQLite** for storing your records.
+
 Source code: [GitHub](https://github.com/sayngwyn/modlist-companion).
 
 Made with AI. Claude contributed heavily under my direction: I decided what it does and checked it, and the AI wrote most of the code, its tests and these docs.
 
 ## Licence
 
-The combined release uses GNU GPL version 3 only. Upstream MO2 files retain their original GPL version 3-or-later grant. See [LICENSE](https://github.com/sayngwyn/modlist-companion/blob/main/LICENSE), [THIRD_PARTY_NOTICES.md](https://github.com/sayngwyn/modlist-companion/blob/main/THIRD_PARTY_NOTICES.md) and [MODIFICATIONS.md](https://github.com/sayngwyn/modlist-companion/blob/main/MODIFICATIONS.md). Thanks to the Mod Organizer 2 contributors, including Sebastian Herbord (Tannin) and thosrtanner.
+The combined release uses GNU GPL version 3 only. Upstream MO2 files retain their original GPL version 3-or-later grant. See [LICENSE](https://github.com/sayngwyn/modlist-companion/blob/main/LICENSE), [THIRD_PARTY_NOTICES.md](https://github.com/sayngwyn/modlist-companion/blob/main/THIRD_PARTY_NOTICES.md) and [MODIFICATIONS.md](https://github.com/sayngwyn/modlist-companion/blob/main/MODIFICATIONS.md).
 
 The sayngwyn skull mark is © sayngwyn, all rights reserved. It is not covered by this project's GPL-3.0 licence and is included only for this program's window. Forks must remove or replace it. The Sayngwyn Serif font is under the SIL Open Font License 1.1 (`OFL.txt` beside it).
