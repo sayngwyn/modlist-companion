@@ -4,7 +4,7 @@
 
 # Modlist Companion (for FOMOD Plus)
 
-Remembers every FOMOD choice you made in MO2. See your recorded choices, check possible missed patches, and follow what changed in your mod list.
+The ultimate companion for a happy modlist. See your recorded choices, check possible missed patches, and follow what changed in your mod list.
 
 This is **Modlist Companion (for FOMOD Plus)**. FOMOD Plus installs the mod; Companion reads its saved picks and the download archive to rebuild the record in the background. It does not change FOMOD Plus, your mods or your profiles.
 

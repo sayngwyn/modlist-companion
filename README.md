@@ -4,7 +4,7 @@
 
 # Modlist Companion
 
-Remembers every FOMOD choice you made in MO2. See your recorded choices, check possible missed patches, and follow what changed in your mod list.
+The ultimate companion for a happy modlist. See your recorded choices, check possible missed patches, and follow what changed in your mod list.
 
 ## How it works
 
