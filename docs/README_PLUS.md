@@ -79,7 +79,7 @@ The [changelog](https://github.com/sayngwyn/modlist-companion/blob/main/CHANGELO
 
 ## Report a problem
 
-Find me on [Discord](https://discord.gg/QZHymBYMxP). Include your MO2 version, Companion edition, the steps you took and what you expected to happen. Remove personal paths from anything you share.
+Find me on [Discord](https://discord.com/invite/sayngwyn). Include your MO2 version, Companion edition, the steps you took and what you expected to happen. Remove personal paths from anything you share.
 
 ## More by sayngwyn
 
