@@ -90,7 +90,7 @@ The log is long, so link a paste site or send it as a file. It can show your Win
 
 ## More by sayngwyn
 
-[![All my mods on Nexus, every game](https://sayngwyn.com/img/mods/button-all-mods-v3.png)](https://www.nexusmods.com/profile/sayngwyn/mods)
+[![All my mods on Nexus, every game](https://sayngwyn.com/img/mods/button-all-mods-v4.png)](https://www.nexusmods.com/profile/sayngwyn/mods)
 
 Also on [my website](https://sayngwyn.com/projects).
 
