@@ -1,5 +1,5 @@
 <p align="center">
-<img alt="Modlist Companion, a Mod Organizer 2 plugin" src="https://sayngwyn.com/img/page/modlist-companion/header-v1.png">
+<img alt="Modlist Companion, a Mod Organizer 2 plugin" src="https://sayngwyn.com/img/page/modlist-companion/header-v2.png">
 </p>
 
 # Modlist Companion (for FOMOD Plus)
