@@ -78,7 +78,7 @@ The [changelog](https://github.com/sayngwyn/modlist-companion/blob/main/CHANGELO
 
 ## Report a problem
 
-**Found a bug?** Find me on [Discord](https://discord.com/invite/sayngwyn) with your MO2 version, Companion edition, what you saw, and MO2's log. I need it for every report, because it shows what the plugin actually did:
+**Found a bug?** Post on the Nexus page's Bugs tab with your MO2 version, Companion edition, what you saw, and MO2's log. I need it for every report, because it shows what the plugin actually did:
 
 `logs\mo_interface.log`, in your MO2 folder
 
@@ -86,7 +86,7 @@ Send it before you reopen MO2, because each start replaces it.
 
 Reports without the log are closed after 14 days. Post it later and I'll reopen the report.
 
-The log is long, so link a paste site or send it as a file. It can show your Windows username, so use a private message if you'd rather.
+The log is long, so link a paste site or bring it to [Discord](https://discord.com/invite/sayngwyn). It can show your Windows username, so use a private report on Nexus if you'd rather.
 
 ## More by sayngwyn
 
