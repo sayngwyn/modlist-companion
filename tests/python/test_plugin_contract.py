@@ -922,6 +922,47 @@ def test_a_new_database_migrates_legacy_data_again(tmp_path, monkeypatch) -> Non
         assert store.event_count() == 1
 
 
+def test_deleting_the_marker_imports_a_late_legacy_file_without_duplicates(tmp_path, monkeypatch) -> None:
+    import json
+
+    module, _, _ = _load_plugin_module(monkeypatch, "logger_migration_marker_rerun_test")
+    organizer = _FakeOrganizer(tmp_path / "Skyrim")
+    Path(organizer.basePath()).mkdir(parents=True)
+    data_root = tmp_path / "fomod_logger"
+    data_root.mkdir()
+    plugin = module.FomodLoggerPlugin()
+    plugin._organizer = organizer
+    plugin._data_root = data_root
+    database = data_root / "fomod_logger.sqlite3"
+
+    # Companion starts before the 1.x file is in place: it writes the marker anyway.
+    plugin._migrate_once()
+    markers = list(data_root.glob(".legacy-migration-v1*"))
+    assert markers
+
+    # The file arrives late; the marker keeps it from being read until it is deleted.
+    legacy = Path(organizer.basePath()) / "fomod_data.json"
+    legacy.write_text(json.dumps({"mods": [{"mod_name": "Late mod", "options": []}]}), encoding="utf-8")
+    plugin._migrate_once()
+    with module.EventStore(database) as store:
+        assert store.event_count() == 0
+
+    for marker in markers:
+        marker.unlink()
+    plugin._migrate_once()
+    with module.EventStore(database) as store:
+        assert [event["mod"]["name"] for event in store.history()] == ["Late mod"]
+        assert store.event_count() == 1
+
+    # Deleting the marker again and re-running the same file adds nothing.
+    for marker in data_root.glob(".legacy-migration-v1*"):
+        marker.unlink()
+    plugin._migrate_once()
+    with module.EventStore(database) as store:
+        assert store.event_count() == 1
+    assert legacy.is_file()
+
+
 @pytest.mark.parametrize("leftovers", [("original", "custom"), ("custom",), ()])
 def test_files_left_by_logger_1x_are_reported_with_the_fix(tmp_path, monkeypatch, leftovers) -> None:
     module, _, _ = _load_plugin_module(monkeypatch, f"logger_legacy_files_test_{len(leftovers)}")

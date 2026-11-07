@@ -8,6 +8,17 @@ The ultimate companion for a happy modlist. See your recorded choices, check pos
 
 This is **Modlist Companion (for FOMOD Plus)**. FOMOD Plus installs the mod; Companion reads its saved picks and the download archive to rebuild the record in the background. It does not change FOMOD Plus, your mods or your profiles.
 
+## Coming from FOMOD Logger
+
+Modlist Companion is the new version of FOMOD Logger, under a new name, and the old FOMOD Logger page is retired. Don't run both. The standard edition brings your old records with you, as long as the old data file stays where it is. The Plus edition doesn't import 1.x data.
+
+1. Close MO2 and back up your data.
+2. Leave `fomod_data.json` where it is, in the MO2 folder (the one with `ModOrganizer.exe`). Don't delete or move it. Companion reads it once, on its first start, copies your records into its own database and leaves the file alone. With several MO2 instances, keep each one's file in its own folder.
+3. Put MO2's own installer back: rename `plugins\installer_fomod_original.dll` to `installer_fomod.dll` (replacing the 1.x copy) and delete `plugins\installer_fomod_logger.dll`. If the original is missing, take `installer_fomod.dll` from your Mod Organizer download.
+4. Install Companion (steps below), start MO2 once, and open Companion to check your records are there.
+
+Started MO2 before the file was in place? It won't look again. Close MO2, back up `plugins\data\fomod_logger`, delete the file in it that starts with `.legacy-migration-v1`, make sure `fomod_data.json` is in the MO2 folder, and start MO2 again. The import brings in what 1.x recorded about your installs; it doesn't add reminders you never set.
+
 ## How it works
 
 - **Keep your choices.** Open Companion from MO2's tools menu to search recorded installer pages and options. Show all, picked or skipped options, or the full install history, and leave a reminder on an option.

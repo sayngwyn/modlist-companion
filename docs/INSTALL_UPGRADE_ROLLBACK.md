@@ -147,8 +147,11 @@ the file directly below `pluginDataPath()`. That folder is shared by every
 instance of one MO2 installation, so the shared file is migrated once, into
 whichever instance starts first; keep each instance's 1.x file in its own base
 directory instead. If a legacy file was not in place when its marker was
-created, move it there and delete that marker: migrated records keep stable
-IDs, so migrating the same file again into the same instance adds nothing.
+created, close MO2, back up `pluginDataPath()/fomod_logger/`, move the file
+there and delete that marker: migrated records keep stable IDs, so migrating the
+same file again into the same instance adds nothing (a test covers this). Companion
+writes the marker even when the file was missing, so a file that arrives after the
+first start is not read until its marker is deleted.
 
 ## Upgrade between Modlist Companion builds
 
