@@ -528,10 +528,10 @@ def test_final_public_and_mo2_version_identities() -> None:
     header = (ROOT / "src" / "fomodloggerversion.h").read_text(encoding="utf-8")
     installer = (ROOT / "src" / "installerfomod.cpp").read_text(encoding="utf-8")
 
-    # The Python plugin is 1.0.1; the native installer is the unchanged 1.0.0 build
+    # The Python plugin is 1.0.2; the native installer is the unchanged 1.0.0 build
     # (release_identity.json native_version), so the header below stays at 1.0.0.
-    assert '_PUBLIC_SEMVER = "1.0.1"' in plugin
-    assert '_MO2_VERSION = "1.0.1"' in plugin
+    assert '_PUBLIC_SEMVER = "1.0.2"' in plugin
+    assert '_MO2_VERSION = "1.0.2"' in plugin
     assert (
         "mobase.VersionInfo(_MO2_VERSION, mobase.VersionScheme.REGULAR)" in plugin
     )

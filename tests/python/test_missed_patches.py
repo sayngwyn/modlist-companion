@@ -175,11 +175,29 @@ def test_a_name_guess_is_not_made_for_an_option_the_installer_did_not_offer():
     event = grass_patches_event(village_option=option)
     event["steps"][0]["groups"][0]["options"][1]["enabled"] = False
     assert find_missed_patches([event], load_order(mods=("Village",)))["missed"] == []
-    # Real evidence (a master that is in the list) still counts when it wasn't offered.
-    event = grass_patches_event(village_option=VILLAGE_BY_MASTERS)
+    # The installer's own file condition on a plugin you have still counts when the option wasn't offered:
+    # a mod added later would unhide it.
+    by_detects = {"name": "Village patch", "plugins": ["GP - Village.esp"], "masters": ["Skyrim.esm"],
+                  "detects": ["Village.esp"]}
+    event = grass_patches_event(village_option=by_detects)
     event["steps"][0]["groups"][0]["options"][1]["enabled"] = False
     [item] = find_missed_patches([event], load_order("Village.esp"))["missed"]
     assert item["available"] is False
+
+
+def test_an_option_the_installer_did_not_offer_is_not_flagged_by_its_plugins_masters_alone():
+    """WACCF's Bashed Patch option: made for a mod you use, but hidden by the installer for its own reasons."""
+
+    for hidden in ("option", "step"):
+        event = grass_patches_event(village_option=VILLAGE_BY_MASTERS)
+        if hidden == "option":
+            event["steps"][0]["groups"][0]["options"][1]["enabled"] = False
+        else:
+            event["steps"][0]["visible"] = False
+        assert find_missed_patches([event], load_order("Village.esp"))["missed"] == [], hidden
+    # The same option, offered and skipped, is still reported.
+    event = grass_patches_event(village_option=VILLAGE_BY_MASTERS)
+    assert [i["label"] for i in find_missed_patches([event], load_order("Village.esp"))["missed"]] == ["Village patch"]
 
 
 def test_reviewed_options_are_not_repeated():

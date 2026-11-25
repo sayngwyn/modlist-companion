@@ -139,7 +139,8 @@ class PatchLookup:
         the list, else None. ``state`` is "missing" or "needs-disabled" (it would apply once those are on).
 
         A name alone is the weakest evidence, so it is not used for an option the installer did not
-        offer, nor for one whose label says it leaves something out ("Exclude X")."""
+        offer, nor for one whose label says it leaves something out ("Exclude X"). For an option the
+        installer did not offer, only its own file conditions (detects) count, not its plugin's masters."""
 
         plugins = evidence.get("plugins", [])
 
@@ -147,7 +148,10 @@ class PatchLookup:
             return _unique(n for n in names_ if _fold(n) not in self.base and _fold(n) not in own)
 
         detects = relevant(evidence.get("detects", []))
-        masters = relevant(evidence.get("masters", []))
+        # An option the installer did not offer is hidden by its own rules, and only a file condition on a plugin
+        # (detects) says a mod you add later would unhide it. The masters of its plugin say what the patch is for,
+        # not why the installer hid it, so they are not enough here.
+        masters = [] if (not available and not automatic) else relevant(evidence.get("masters", []))
         needs = _unique(detects + masters)
         if needs:
             if not all(_fold(name) in self.active or _fold(name) in self.switched_off for name in needs):

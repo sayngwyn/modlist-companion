@@ -560,9 +560,11 @@ def every_state() -> Scenario:
     # An automatic install the installer would do now (the target is in the list, the patch isn't).
     w.mods[w.mods.index(next(m for m in w.mods if m.name == "Skyrim Landscape and Water Fixes"))].auto = [
         A("Landscape Fixes - Open Cities.esp", OPEN, installed=False)]
-    # A patch the installer greyed out when it ran.
+    # A patch the installer greyed out when it ran: its own file condition looks for the target (only such an
+    # unoffered option counts; one with just masters does not).
     imm = next(m for m in w.mods if m.name == "Immersive Armors")
-    imm.patches = [P("Falskaar armour patch", "Immersive Armors - Falskaar.esp", FALSKAAR, picked=False, enabled=False)]
+    imm.patches = [P("Falskaar armour patch", "Immersive Armors - Falskaar.esp", FALSKAAR, picked=False, detects=True,
+                     enabled=False)]
     # A mod reinstalled with different choices, with a reminder on the old record.
     lux = next(m for m in w.mods if m.name == "Static Mesh Improvement Mod")
     lux.pages = ("textures", "weather")

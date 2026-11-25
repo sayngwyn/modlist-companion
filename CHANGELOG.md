@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.2
+
+One more false "possible missed patch" case (both editions).
+
+- An option the installer did not offer is no longer listed just because its plugin's
+  master is a mod you use. It is listed only when the installer's own file condition
+  names a plugin you have, so a mod you add later still brings the patch up.
+
+The standard edition's native installer is unchanged from 1.0.0 (same build);
+only the Python part changed.
+
+
 ## 1.0.1
 
 Fewer false "possible missed patch" warnings (both editions).

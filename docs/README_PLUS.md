@@ -45,13 +45,13 @@ Install **one edition**, never both.
 
 | Your FOMOD installer | Companion edition |
 |---|---|
-| MO2's standard installer | **Modlist Companion** — `modlist-companion-1.0.1.zip` |
-| FOMOD Plus | **Modlist Companion (for FOMOD Plus)** — `modlist-companion-plus-1.0.1.zip` |
+| MO2's standard installer | **Modlist Companion** — `modlist-companion-1.0.2.zip` |
+| FOMOD Plus | **Modlist Companion (for FOMOD Plus)** — `modlist-companion-plus-1.0.2.zip` |
 
 1. Close MO2 and back up any existing Companion data.
 2. If the standard edition is installed, remove `plugins/fomod_logger.dll`, `plugins/fomod_logger.py`, `fomod_logger_docs/` and `fomod_logger-manifest.json` first. Both editions share `plugins/fomod_logger_support/`; the package you extract supplies that folder.
 3. Upgrading from FOMOD Logger 1.x? Restore MO2's stock installer as described in the [upgrade guide](https://github.com/sayngwyn/modlist-companion/blob/main/docs/INSTALL_UPGRADE_ROLLBACK.md) first.
-4. Extract `modlist-companion-plus-1.0.1.zip` into the MO2 folder containing `ModOrganizer.exe`, merging `plugins/`. **Do not install it as a mod.** Keep FOMOD Plus installed and enabled.
+4. Extract `modlist-companion-plus-1.0.2.zip` into the MO2 folder containing `ModOrganizer.exe`, merging `plugins/`. **Do not install it as a mod.** Keep FOMOD Plus installed and enabled.
 5. Start MO2. **FOMOD Logger Plus** should load without a problem notice. Open **Modlist Companion (for FOMOD Plus)** from the tools menu. Use **More > Scan existing mods...** to pick up earlier installs; new installs appear automatically.
 
 Data lives in `<MO2 plugin data folder>/fomod_logger_plus/`, separate from the standard edition's data. Internal plugin names remain FOMOD Logger Plus for compatibility.
