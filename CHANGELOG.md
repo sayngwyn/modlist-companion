@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.0.3
+
+Fewer false "possible missed patch" warnings, and updates now show their new version (both editions).
+
+- An extra that builds on a mod's own plugin is no longer listed just because it needs
+  something that plugin already needs (for example WACCF's Bashed Patch extra, which
+  needs the Unofficial Patch like WACCF itself). This holds when another option lays a
+  different copy of that plugin over it, too (WACCF's SkyPatched Full).
+  Patches built on a plugin that two chosen options both install are now flagged only
+  through the installer's own file conditions.
+- Options on an installer page that was never shown (because of an earlier choice,
+  like WACCF's Modular page when you pick Full) are listed only when the installer's
+  own file condition names a mod you use, and options whose files a chosen option
+  already installed are not listed.
+- Options in a group that leaves mods out (like Risa's All In One Menu's "Exclude:"
+  lists) are no longer guessed to be patches for the mods they name.
+- Files in the download packages now carry the release's date. Before, MO2 could keep
+  using its old cached copy of a file after an update and show the old version number.
+
+The standard edition's native installer is unchanged from 1.0.0 (same build);
+only the Python part changed.
+
+
 ## 1.0.2
 
 One more false "possible missed patch" case (both editions).

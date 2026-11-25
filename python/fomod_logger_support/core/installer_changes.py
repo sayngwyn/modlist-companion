@@ -29,7 +29,7 @@ from datetime import datetime
 from difflib import SequenceMatcher
 from typing import Any, Iterable
 
-from .missed_patches import PatchLookup, own_plugins
+from .missed_patches import PatchLookup, own_plugins, own_requirements
 from .reviews import option_walk
 
 _EVIDENCE_KEYS = ("plugins", "masters", "detects")
@@ -74,7 +74,8 @@ def _patch(option: dict[str, Any], name: str, new: dict[str, Any], lookup: Patch
 
     if lookup is None or not any(key in option for key in _EVIDENCE_KEYS):
         return None
-    found = lookup.target(option, name, own=own, mod_name=new.get("mod", {}).get("name", ""))
+    found = lookup.target(option, name, own=own, mod_name=new.get("mod", {}).get("name", ""),
+                          own_needs=own_requirements(new, lookup))
     if found is None:
         return None
     kind, needs, state = found

@@ -84,7 +84,8 @@ def build_plus_source_archive_bytes(source_files: Mapping[str, bytes], *, commit
 
 
 def build_plus_binary_archive_bytes(files: Mapping[str, bytes], *, commit: str, source_filename: str,
-                                    source_sha256: str) -> bytes:
+                                    source_sha256: str,
+                                    built_at: tuple[int, ...] = common.FIXED_ZIP_TIME) -> bytes:
     manifest = {
         "format": 1, "product": PRODUCT_NAME, "version": PACKAGE_VERSION, "author": common.PACKAGE_AUTHOR,
         "repository_commit": commit,
@@ -93,7 +94,7 @@ def build_plus_binary_archive_bytes(files: Mapping[str, bytes], *, commit: str, 
     }
     packaged = dict(files)
     packaged["fomod_logger_plus-manifest.json"] = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8")
-    return common.zip_bytes(packaged)
+    return common.zip_bytes(packaged, built_at)
 
 
 def build(sqlite_dll: Path, output: Path, *, expected_commit: str) -> dict[str, object]:
@@ -112,7 +113,8 @@ def build(sqlite_dll: Path, output: Path, *, expected_commit: str) -> dict[str, 
                                              expected_sqlite_sha256=lock["file_sha256"])
     source_archive = build_plus_source_archive_bytes(source_files, commit=commit)
     binary_archive = build_plus_binary_archive_bytes(
-        binary_files, commit=commit, source_filename=SOURCE_ARCHIVE_NAME, source_sha256=common.sha256(source_archive))
+        binary_files, commit=commit, source_filename=SOURCE_ARCHIVE_NAME, source_sha256=common.sha256(source_archive),
+        built_at=common.commit_zip_time(ROOT, commit))
     if common.repository_commit(ROOT, expected_commit=expected_commit, verifier_commit=expected_commit) != commit:
         raise RuntimeError("repository changed while release archives were assembled")
     output.mkdir(parents=True, exist_ok=True)

@@ -800,10 +800,10 @@ def test_release_identity_representations_and_canonical_filenames(tmp_path) -> N
 
     assert identity["public_semver"] == release.PACKAGE_VERSION
     assert identity["pep440"] == pyproject["project"]["version"]
-    assert identity["mo2_version"] == identity["public_semver"] == "1.0.2"
-    assert release.BINARY_ARCHIVE_NAME == "modlist-companion-1.0.2.zip"
+    assert identity["mo2_version"] == identity["public_semver"] == "1.0.3"
+    assert release.BINARY_ARCHIVE_NAME == "modlist-companion-1.0.3.zip"
     assert release.SOURCE_ARCHIVE_NAME == (
-        "modlist-companion-1.0.2-source.zip"
+        "modlist-companion-1.0.3-source.zip"
     )
     cache = presets["configurePresets"][0]["cacheVariables"]
     assert cache["FOMOD_LOGGER_RELEASE_BUILD"] is True
@@ -1494,7 +1494,7 @@ def test_the_plus_archives_name_their_contents_and_their_source():
     source_zip = plus.build_plus_source_archive_bytes(sources, commit="e" * 40)
     binary_zip = plus.build_plus_binary_archive_bytes(files, commit="e" * 40, source_filename=plus.SOURCE_ARCHIVE_NAME,
                                                       source_sha256=plus.common.sha256(source_zip))
-    assert plus.BINARY_ARCHIVE_NAME == "modlist-companion-plus-1.0.2.zip"
+    assert plus.BINARY_ARCHIVE_NAME == "modlist-companion-plus-1.0.3.zip"
     with zipfile.ZipFile(io.BytesIO(binary_zip)) as archive:
         manifest = json.loads(archive.read("fomod_logger_plus-manifest.json"))
         assert manifest["product"] == "Modlist Companion (for FOMOD Plus)" and manifest["repository_commit"] == "e" * 40
@@ -2090,3 +2090,21 @@ def test_reuse_mode_builds_end_to_end_from_a_clean_commit(monkeypatch, tmp_path)
             native_from_release_zip=package,
         )
     assert not refused.exists()
+
+
+def test_binary_package_entries_are_dated_by_the_release_commit():
+    """A fixed date let Python reuse cached compiled files after an update (same date, same size)."""
+
+    release = _release_module()
+    commit = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"], check=True, capture_output=True,
+                            text=True).stdout.strip()
+    when = release.commit_zip_time(ROOT, commit)
+    assert when != release.FIXED_ZIP_TIME
+    # The commit's own wall-clock time, not UTC: zip dates have no time zone and Windows reads them as local.
+    local = subprocess.run(["git", "-C", str(ROOT), "show", "-s", "--format=%cd", "--date=format:%Y %m %d %H %M %S",
+                            commit], check=True, capture_output=True, text=True).stdout.split()
+    assert when == tuple(int(part) for part in local)
+    with zipfile.ZipFile(io.BytesIO(release.zip_bytes({"a.py": b"x = 1\n"}, when))) as archive:
+        [info] = archive.infolist()
+    assert info.date_time[:5] == when[:5]
+    assert release.zip_bytes({"a.py": b"x"}, when) == release.zip_bytes({"a.py": b"x"}, when)

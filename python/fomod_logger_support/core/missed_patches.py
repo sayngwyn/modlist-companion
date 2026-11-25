@@ -128,13 +128,19 @@ class PatchLookup:
             if _fold(name) not in self.active:
                 self.switched_off[_fold(name)] = "unchecked in the plugin list"
         self._names: _NameIndex | None = None
+        # MO2's masters of every plugin in the list. The installer reads masters only for options it did not install,
+        # so for a mod's own installed plugin this is where its requirements are.
+        self.masters_of: dict[str, set[str]] = {
+            _fold(name): {_fold(master) for master in masters}
+            for name, masters in (load_order.get("plugin_masters") or {}).items()}
 
     def off(self, names_: Iterable[str]) -> list[dict[str, Any]]:
         return [{"plugin": name, "where": self.switched_off[_fold(name)]}
                 for name in names_ if _fold(name) in self.switched_off]
 
     def target(self, evidence: dict[str, Any], label: str, *, own: set[str], mod_name: str,
-               automatic: bool = False, available: bool = True) -> tuple[str, list[str], str] | None:
+               automatic: bool = False, available: bool = True,
+               own_needs: dict[str, set[str]] | None = None, group: str = "") -> tuple[str, list[str], str] | None:
         """(kind, plugins it is made for, state) when the option looks like a patch for plugins in
         the list, else None. ``state`` is "missing" or "needs-disabled" (it would apply once those are on).
 
@@ -147,11 +153,28 @@ class PatchLookup:
         def relevant(names_: Iterable[str]) -> list[str]:
             return _unique(n for n in names_ if _fold(n) not in self.base and _fold(n) not in own)
 
-        detects = relevant(evidence.get("detects", []))
+        # A patch built on one of this installer's own plugins needs whatever that plugin needs (the mod's own
+        # requirements), and an installer often looks for those too: neither says what the patch is for.
+        inherited: set[str] = set()
+        needs_of = own_needs or {}
+        mine = {_fold(name) for name in plugins}
+        for key in needs_of.get(INSTALLED, set()) - mine:   # what the other plugins this install put in need
+            inherited |= needs_of.get(key, set())
+        for name in evidence.get("masters", []):        # what the plugin this one builds on needs, in any build
+            if _fold(name) not in mine:
+                inherited |= needs_of.get(_fold(name), set())
+        detects = [name for name in relevant(evidence.get("detects", [])) if _fold(name) not in inherited]
         # An option the installer did not offer is hidden by its own rules, and only a file condition on a plugin
         # (detects) says a mod you add later would unhide it. The masters of its plugin say what the patch is for,
         # not why the installer hid it, so they are not enough here.
         masters = [] if (not available and not automatic) else relevant(evidence.get("masters", []))
+        masters = [name for name in masters if _fold(name) not in inherited]
+        # Two picked options put down the same plugin (WACCF's SkyPatched Full lays a lighter main plugin over the
+        # main file's): the hidden copy's needs were never recorded, so a patch built on that plugin can't be told
+        # apart from the mod's own requirements by its masters.
+        if any(_fold(name) in needs_of.get(OVERLAID, set()) for name in evidence.get("masters", [])
+               if _fold(name) not in mine):
+            masters = []
         needs = _unique(detects + masters)
         if needs:
             if not all(_fold(name) in self.active or _fold(name) in self.switched_off for name in needs):
@@ -166,6 +189,8 @@ class PatchLookup:
             and not automatic
             and available
             and not _leaves_out(label)
+            # Risa's All In One Menu: "Exclude: Menus & Frameworks (check to leave unmanaged)" lists mods by name.
+            and not _leaves_out(group)
         ):
             if self._names is None:
                 self._names = _NameIndex(self.load_order)  # once per call, for every install
@@ -190,6 +215,39 @@ def own_plugins(event: dict[str, Any]) -> set[str]:
     }
 
 
+INSTALLED = ""   # own_requirements' key for the plugins this install put in
+OVERLAID = "\0overlaid"   # own_requirements' key for plugins that more than one picked option put down
+
+
+def own_requirements(event: dict[str, Any], lookup: "PatchLookup | None" = None) -> dict[str, set[str]]:
+    """What this installer's own plugins need. Per plugin: what MO2 reports for it when it is in the list (the
+    installer records no masters for options it installed), and what the options that provide that plugin alone
+    recorded (a build with several plugins would mix their masters); every build counts, since a mod with two
+    variants of its main plugin needs what either needs. Under ``INSTALLED``: the plugins this install put in."""
+
+    result: dict[str, set[str]] = {}
+    if lookup is not None:
+        for key in own_plugins(event):
+            if key in lookup.masters_of:
+                result.setdefault(key, set()).update(m for m in lookup.masters_of[key] if m != key)
+    for item in [
+        option
+        for step in event.get("steps", [])
+        for group in step.get("groups", [])
+        for option in group.get("options", [])
+    ] + list(event.get("automatic_installs", []) or []):
+        plugins = item.get("plugins", [])
+        if len(plugins) != 1:
+            continue
+        key = _fold(plugins[0])
+        result.setdefault(key, set()).update(
+            _fold(name) for name in item.get("masters", []) if _fold(name) != key)
+    picked = [_fold(plugin) for item in _picked(event) for plugin in set(item["evidence"].get("plugins", []))]
+    result[INSTALLED] = set(picked)
+    result[OVERLAID] = {key for key in result[INSTALLED] if picked.count(key) > 1}
+    return result
+
+
 def game_plugin_names(
     names: Iterable[str],
     origins: dict[str, str],
@@ -211,8 +269,42 @@ def game_plugin_names(
 _CHOOSE_ONE = frozenset({"SelectExactlyOne", "SelectAtMostOne"})
 
 
+def _file_key(entry: dict[str, Any]) -> tuple[str, str]:
+    return (_fold(str(entry.get("source", ""))).replace("/", "\\").strip("\\"),
+            _fold(str(entry.get("destination", ""))).replace("/", "\\").strip("\\"))
+
+
+def _already_installed(option: dict[str, Any], installed: list[tuple[str, str, str]]) -> bool:
+    """Every file of ``option`` was put in by a picked option (the same source to the same place, or inside a folder a
+    picked option installed): WACCF's hidden Modular "Constructible Objects" is a folder SkyPatched Full installs."""
+
+    files = option.get("files") or []
+    if not files or option.get("files_truncated"):
+        return False
+    for entry in files:
+        source, destination = _file_key(entry)
+        if not source:
+            return False
+        covered = False
+        for kind, folder, target in installed:
+            if (source, destination) == (folder, target):
+                covered = True
+            elif kind == "folder" and source.startswith(folder + "\\"):
+                rest = source[len(folder) + 1:]
+                covered = destination == (target + "\\" + rest if target else rest)
+            if covered:
+                break
+        if not covered:
+            return False
+    return True
+
+
 def _candidates(event: dict[str, Any]) -> Iterable[dict[str, Any]]:
+    installed = [(str(entry.get("kind", "")), *_file_key(entry)) for item in _picked(event)
+                 for entry in item["evidence"].get("files", []) or []]
     for step in event.get("steps", []):
+        # A page the installer never showed counts as not offered (``available`` False): only an option's own file
+        # condition says a mod you add later would bring it up, never its name or its plugin's masters.
         for group in step.get("groups", []):
             options = group.get("options", [])
             # In a choose-one group the others are alternatives to what was picked, not skipped patches. Picking a
@@ -221,7 +313,7 @@ def _candidates(event: dict[str, Any]) -> Iterable[dict[str, Any]]:
                     option.get("selected") and not _leaves_out(option.get("name") or "") for option in options):
                 continue
             for option in options:
-                if option.get("selected"):
+                if option.get("selected") or _already_installed(option, installed):
                     continue
                 yield {
                     "option_id": option["id"],
@@ -357,6 +449,7 @@ def find_missed_patches(
             without_evidence += 1
             continue
         own = own_plugins(event)
+        own_needs = own_requirements(event, lookup)
         mod_name = event.get("mod", {}).get("name", "")
 
         for candidate in _candidates(event):
@@ -369,7 +462,8 @@ def find_missed_patches(
                 continue  # already in the list, e.g. installed from another archive
 
             found = lookup.target(evidence, candidate["label"], own=own, mod_name=mod_name,
-                                  automatic=candidate["automatic"], available=candidate["available"])
+                                  automatic=candidate["automatic"], available=candidate["available"],
+                                  own_needs=own_needs, group=candidate["group_name"])
             if found is None:
                 continue
             kind, needs, state = found

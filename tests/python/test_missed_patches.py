@@ -170,6 +170,16 @@ def test_an_exclude_option_is_not_guessed_to_be_a_patch_for_the_mod_it_names():
                                    load_order(mods=("Village",)))["missed"] == [], label
 
 
+def test_a_name_guess_is_not_made_in_a_group_that_leaves_mods_out():
+    """Real Risa's All In One Menu 7.1: the options are plain mod names; the group says they are excluded."""
+
+    event = grass_patches_event(village_option={"name": "Village", "plugins": [], "detects": []})
+    event["steps"][0]["groups"][0]["name"] = "Exclude: Menus & Frameworks (check to leave unmanaged)"
+    assert find_missed_patches([event], load_order(mods=("Village",)))["missed"] == []
+    event["steps"][0]["groups"][0]["name"] = "Select the Mods You Use"
+    assert [i["label"] for i in find_missed_patches([event], load_order(mods=("Village",)))["missed"]] == ["Village"]
+
+
 def test_a_name_guess_is_not_made_for_an_option_the_installer_did_not_offer():
     option = {"name": "Village grass textures", "plugins": [], "detects": []}
     event = grass_patches_event(village_option=option)
@@ -198,6 +208,164 @@ def test_an_option_the_installer_did_not_offer_is_not_flagged_by_its_plugins_mas
     # The same option, offered and skipped, is still reported.
     event = grass_patches_event(village_option=VILLAGE_BY_MASTERS)
     assert [i["label"] for i in find_missed_patches([event], load_order("Village.esp"))["missed"]] == ["Village patch"]
+
+
+def bashed_patch_event(main_builds_masters: list[list[str]]) -> dict:
+    """WACCF's shape: its own main plugin (one or two builds of it) needs USSEP, and the Bashed Patch extra needs the
+    main plugin and USSEP."""
+
+    options = [{"id": f"step:0/group:0/option:{n}", "name": f"Main {n}", "selected": n == 0, "enabled": True,
+                "plugins": ["Fixes.esp"], "masters": ["Skyrim.esm", *masters], "detects": []}
+               for n, masters in enumerate(main_builds_masters)]
+    event = grass_patches_event(village_option={
+        "name": "Fixes_BashedPatchFix.esp", "plugins": ["Fixes_BashedPatchFix.esp"],
+        "masters": ["Skyrim.esm", "Fixes.esp", USSEP], "detects": []})
+    skipped = event["steps"][0]["groups"][0]["options"][1]
+    skipped["id"] = "step:0/group:1/option:0"
+    event["steps"][0]["groups"] = [
+        {"id": "step:0/group:0", "name": "Main", "type": "SelectExactlyOne", "options": options},
+        {"id": "step:0/group:1", "name": "Bashed Patch", "type": "SelectAny", "options": [skipped]}]
+    return event
+
+
+USSEP = "unofficial skyrim special edition patch.esp"
+
+
+@pytest.mark.parametrize("builds", [
+    [[USSEP]],
+    [[], [USSEP]],   # the picked build does not need it, the other one does
+])
+def test_a_requirement_the_mods_own_plugin_has_does_not_make_an_extra_a_missed_patch(builds):
+    assert find_missed_patches([bashed_patch_event(builds)], load_order(USSEP))["missed"] == []
+
+
+def test_the_mods_own_installed_plugin_lends_its_masters_from_mo2_when_the_installer_recorded_none():
+    """Real WACCF 2.11.4: the installer records no masters for the main plugin it installed; MO2 knows them."""
+
+    event = bashed_patch_event([[]])
+    del event["steps"][0]["groups"][0]["options"][0]["masters"]
+    order = load_order(USSEP, "Fixes.esp")
+    order["plugin_masters"] = {"Fixes.esp": ["Skyrim.esm", USSEP]}
+    assert find_missed_patches([event], order)["missed"] == []
+    # Without MO2's masters the extra would look like a USSEP patch: that is the bug this guards.
+    order["plugin_masters"] = {}
+    assert [i["label"] for i in find_missed_patches([event], order)["missed"]] == ["Fixes_BashedPatchFix.esp"]
+
+
+def test_an_option_whose_condition_looks_only_for_the_mods_own_requirement_is_not_flagged():
+    """Real WACCF 2.11.4: the hidden SkyPatched Modular step's "Constructible Objects" looks for USSEP, which WACCF
+    itself needs."""
+
+    event = bashed_patch_event([[USSEP]])
+    event["steps"].append({"id": "step:1", "name": "Modular", "visible": False, "groups": [{
+        "id": "step:1/group:0", "name": "Other", "type": "SelectAny", "options": [{
+            "id": "step:1/group:0/option:0", "name": "Constructible Objects", "selected": False, "enabled": True,
+            "plugins": [], "detects": [USSEP]}]}]})
+    labels = [i["label"] for i in find_missed_patches([event], load_order(USSEP))["missed"]]
+    assert "Constructible Objects" not in labels
+
+
+def test_an_option_on_a_page_the_installer_never_showed_counts_only_by_its_file_condition():
+    """A hidden page is not offered: its option's own file condition still says a mod added later brings it up (as in
+    1.0.2), but neither its name nor its plugin's masters do."""
+
+    event = bashed_patch_event([[]])
+    event["steps"].append({"id": "step:1", "name": "Patches", "visible": False, "groups": [{
+        "id": "step:1/group:0", "name": "Other", "type": "SelectAny", "options": [
+            {"id": "step:1/group:0/option:0", "name": "Village patch", "selected": False, "enabled": True,
+             "plugins": ["Fixes - Village.esp"], "masters": ["Skyrim.esm"], "detects": ["Village.esp"]},
+            {"id": "step:1/group:0/option:1", "name": "Town patch", "selected": False, "enabled": True,
+             "plugins": ["Fixes - Town.esp"], "masters": ["Skyrim.esm", "Town.esp"], "detects": []},
+            {"id": "step:1/group:0/option:2", "name": "Town", "selected": False, "enabled": True,
+             "plugins": [], "detects": []}]}]})
+    missed = find_missed_patches([event], load_order("Village.esp", "Town.esp"))["missed"]
+    assert [(i["label"], i["needs"]) for i in missed] == [("Village patch", ["Village.esp"])]
+
+
+def test_an_extra_built_on_a_plugin_two_picked_options_put_down_is_not_flagged_by_its_masters():
+    """Real WACCF 2.11.4 with SkyPatched Full: the main file's plugin (needs USSEP) and SkyPatched Full's lighter
+    copy of it (doesn't) are both picked; MO2 sees only the lighter one and the installer recorded neither."""
+
+    event = bashed_patch_event([[]])
+    main = event["steps"][0]["groups"][0]["options"][0]
+    del main["masters"]
+    event["steps"][0]["groups"].insert(1, {"id": "step:0/group:2", "name": "SkyPatched", "type": "SelectExactlyOne",
+                                           "options": [{"id": "step:0/group:2/option:0", "name": "Full",
+                                                        "selected": True, "enabled": True,
+                                                        "plugins": ["Fixes.esp"], "detects": []}]})
+    order = load_order(USSEP, "Fixes.esp")
+    order["plugin_masters"] = {"Fixes.esp": ["Skyrim.esm"]}
+    assert find_missed_patches([event], order)["missed"] == []
+    # A file condition on another mod still counts.
+    event["steps"][0]["groups"][2]["options"][0]["detects"] = ["Village.esp"]
+    order["active_plugins"].append("Village.esp")
+    assert [i["needs"] for i in find_missed_patches([event], order)["missed"]] == [["Village.esp"]]
+
+
+def test_a_patch_on_a_plugin_two_picked_options_lay_counts_only_by_its_file_condition():
+    """Known limitation, on purpose: a base file plus a hotfix both lay Fixes.esp, so the hidden copy's masters are
+    unknown and a patch on it can't be told apart from the mod's own needs by its masters (WACCF's SkyPatched Full is
+    the same shape). Only its file condition counts. Reading the hidden copy from the archive could lift this."""
+
+    event = bashed_patch_event([[]])
+    del event["steps"][0]["groups"][0]["options"][0]["masters"]
+    event["steps"][0]["groups"][1]["options"][0]["masters"] = ["Skyrim.esm", "Fixes.esp", "Village.esp"]
+    order = load_order("Village.esp", "Fixes.esp")
+    order["plugin_masters"] = {"Fixes.esp": ["Skyrim.esm"]}
+    assert [i["label"] for i in find_missed_patches([event], order)["missed"]] == ["Fixes_BashedPatchFix.esp"]
+    event["steps"][0]["groups"].insert(1, {"id": "step:0/group:2", "name": "Hotfix", "type": "SelectAny",
+                                           "options": [{"id": "step:0/group:2/option:0", "name": "Hotfix",
+                                                        "selected": True, "enabled": True,
+                                                        "plugins": ["Fixes.esp"], "detects": []}]})
+    assert find_missed_patches([event], order)["missed"] == []
+    event["steps"][0]["groups"][2]["options"][0]["detects"] = ["Village.esp"]
+    assert [i["needs"] for i in find_missed_patches([event], order)["missed"]] == [["Village.esp"]]
+
+
+@pytest.mark.parametrize("picked_files, flagged", [
+    ([{"kind": "folder", "source": "skypatcher\\ConstructibleObject", "destination": ""}], False),   # same folder
+    ([{"kind": "folder", "source": "skypatcher", "destination": ""}], True),   # parent: lands a folder deeper
+    ([{"kind": "file", "source": "skypatcher\\ConstructibleObject", "destination": ""}], False),  # same entry
+    ([{"kind": "folder", "source": "skypatcher", "destination": "SKSE"}], True),                      # elsewhere
+    ([{"kind": "folder", "source": "skypatcher\\Armor", "destination": ""}], True),                   # another one
+])
+def test_an_option_whose_files_a_picked_option_installed_is_not_a_skipped_patch(picked_files, flagged):
+    """Real WACCF 2.11.4: SkyPatched Full installs skypatcher\\ConstructibleObject, which the hidden Modular page's
+    "Constructible Objects" (file condition: USSEP) would install."""
+
+    event = bashed_patch_event([[]])
+    event["steps"][0]["groups"][0]["options"][0]["files"] = picked_files
+    event["steps"].append({"id": "step:1", "name": "Modular", "visible": False, "groups": [{
+        "id": "step:1/group:0", "name": "Other", "type": "SelectAny", "options": [{
+            "id": "step:1/group:0/option:0", "name": "Constructible Objects", "selected": False, "enabled": True,
+            "plugins": [], "detects": ["Village.esp"],
+            "files": [{"kind": "folder", "source": "skypatcher\\ConstructibleObject", "destination": ""}]}]}]})
+    labels = [i["label"] for i in find_missed_patches([event], load_order("Village.esp"))["missed"]]
+    assert ("Constructible Objects" in labels) is flagged
+
+
+def test_a_skipped_patch_does_not_count_its_own_masters_as_the_mods_requirements():
+    """Only the plugins this install put in (and the plugin a patch builds on) lend their requirements."""
+
+    event = grass_patches_event(village_option=VILLAGE_BY_MASTERS)
+    assert [i["label"] for i in find_missed_patches([event], load_order("Village.esp"))["missed"]] == ["Village patch"]
+
+
+def test_a_patch_for_another_mod_is_still_reported_when_the_main_plugin_does_not_need_that_mod():
+    event = bashed_patch_event([[USSEP]])
+    event["steps"][0]["groups"][1]["options"][0]["masters"].append("Village.esp")
+    [item] = find_missed_patches([event], load_order(USSEP, "Village.esp"))["missed"]
+    assert item["needs"] == ["Village.esp"]
+
+
+def test_a_build_with_several_plugins_does_not_lend_its_masters_to_each_of_them():
+    event = bashed_patch_event([[]])
+    event["steps"][0]["groups"][0]["options"].append({
+        "id": "step:0/group:0/option:9", "name": "All in one", "selected": False, "enabled": True,
+        "plugins": ["Fixes.esp", "Fixes - Village.esp"], "masters": ["Village.esp"], "detects": []})
+    event["steps"][0]["groups"][1]["options"][0]["masters"] = ["Skyrim.esm", "Fixes.esp", "Village.esp"]
+    assert "Fixes_BashedPatchFix.esp" in [
+        i["label"] for i in find_missed_patches([event], load_order("Village.esp"))["missed"]]
 
 
 def test_reviewed_options_are_not_repeated():

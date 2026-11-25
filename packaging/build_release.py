@@ -15,6 +15,7 @@ import tempfile
 import uuid
 import zipfile
 from collections.abc import Mapping
+from datetime import datetime
 from pathlib import Path, PurePosixPath
 from typing import Any, NamedTuple
 
@@ -501,12 +502,28 @@ def collect_binary_files(
     return files
 
 
-def zip_bytes(files: Mapping[str, bytes]) -> bytes:
+def commit_zip_time(root: Path, commit: str) -> tuple[int, ...]:
+    """The date for a binary package's entries: the release commit's own wall-clock time (in the committer's time
+    zone, as recorded in the commit), so the same commit still gives the same package. Zip dates carry no time zone
+    and Windows reads them as local time, so UTC would put files hours in the future. It has to differ between
+    releases: Python decides whether its cached compiled copy of a file is stale by that file's date and size, and a
+    version-number edit changes neither under a fixed date."""
+
+    if GIT_EXECUTABLE is None:
+        raise RuntimeError("Git is required for release source verification")
+    stamp = subprocess.run(
+        [GIT_EXECUTABLE, "-C", str(root), "show", "-s", "--format=%cI", commit],
+        check=True, capture_output=True, env=_clean_git_environment(), text=True,
+    ).stdout.strip()
+    return tuple(datetime.fromisoformat(stamp).timetuple()[:6])
+
+
+def zip_bytes(files: Mapping[str, bytes], when: tuple[int, ...] = FIXED_ZIP_TIME) -> bytes:
     output = io.BytesIO()
     # Stored entries avoid zlib-version drift; inputs are already release-sized.
     with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_STORED) as archive:
         for name, data in sorted(files.items()):
-            info = zipfile.ZipInfo(name, FIXED_ZIP_TIME)
+            info = zipfile.ZipInfo(name, when)
             info.compress_type = zipfile.ZIP_STORED
             info.external_attr = 0o100644 << 16
             archive.writestr(info, data)
@@ -570,6 +587,7 @@ def build_binary_archive_bytes(
     source_sha256: str,
     runtime_source_components: list[dict[str, Any]],
     native_binary_from: Mapping[str, str] | None = None,
+    built_at: tuple[int, ...] = FIXED_ZIP_TIME,
 ) -> bytes:
     files = dict(binary_files)
     manifest = {
@@ -596,7 +614,7 @@ def build_binary_archive_bytes(
     files[BINARY_MANIFEST_NAME] = (
         json.dumps(manifest, indent=2, sort_keys=True) + "\n"
     ).encode("utf-8")
-    return zip_bytes(files)
+    return zip_bytes(files, built_at)
 
 
 def pe_machine(native_bytes: bytes) -> int:
@@ -1112,6 +1130,7 @@ def build(
     )
     binary_archive = build_binary_archive_bytes(
         binary_files,
+        built_at=commit_zip_time(ROOT, commit),
         commit=commit,
         source_filename=source_output.name,
         source_sha256=source_archive_sha256,

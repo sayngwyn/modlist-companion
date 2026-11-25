@@ -34,7 +34,7 @@ from .file_origin import _key
 
 KIND = "plain"
 INSTALLER_NAME = "No installer (plain install)"
-EDITION_VERSION = "1.0.2"
+EDITION_VERSION = "1.0.3"
 # The same limits as the FOMOD file entries: 20,000 files to a record and about 2 MiB of path text, so a record
 # stays small whatever the mod holds. A mod with more is recorded as cut short.
 MAX_FILES = 20_000
