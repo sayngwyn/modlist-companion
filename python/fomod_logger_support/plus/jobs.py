@@ -19,7 +19,7 @@ from ..archive.sevenzip import ArchiveError, Limits
 from ..core.storage import validate_event
 from . import record as plus_record
 
-EDITION_VERSION = "1.0.0"
+EDITION_VERSION = "1.0.1"
 NAMES_ONLY_INSTALLER = "Modlist Companion (names saved by FOMOD Plus)"
 _EVENT_NAMESPACE = uuid.UUID("9d1c6a0e-7a5b-4d5e-9c2f-3b7a21d0c6f4")
 

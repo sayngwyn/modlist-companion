@@ -119,6 +119,69 @@ def test_generic_words_do_not_name_match():
     assert result["missed"] == []
 
 
+def choose_one_event(group_type: str, picked: str | None) -> dict:
+    """WACCF-style either/or: two patches for the same mod in one group, ``picked`` of them selected."""
+
+    event = grass_patches_event(village_option=VILLAGE_BY_MASTERS)
+    plain = {"id": "step:0/group:1/option:0", "name": "Village patch", "enabled": True,
+             "plugins": ["GP - Village.esp"], "masters": ["Skyrim.esm", "GrassPatches.esp", "Village.esp"], "detects": []}
+    plus = {"id": "step:0/group:1/option:1", "name": "Village + Extra patch", "enabled": True,
+            "plugins": ["GP - Village Extra.esp"], "masters": ["Skyrim.esm", "Village.esp", "Extra.esp"], "detects": []}
+    for option in (plain, plus):
+        option["selected"] = option["name"] == picked
+    event["steps"][0]["groups"].append({"id": "step:0/group:1", "name": "Either or", "type": group_type,
+                                        "options": [plain, plus]})
+    return event
+
+
+@pytest.mark.parametrize("group_type", ["SelectExactlyOne", "SelectAtMostOne"])
+def test_the_other_choice_in_a_choose_one_group_is_not_a_missed_patch(group_type):
+    event = choose_one_event(group_type, "Village patch")
+    labels = [item["label"] for item in find_missed_patches(
+        [event], load_order("Village.esp", "Extra.esp"))["missed"]
+        if item["option_id"].startswith("step:0/group:1")]
+    assert labels == []
+
+
+@pytest.mark.parametrize("none_label", ["None", "No patch", "Skip patches"])
+def test_picking_a_none_choice_in_a_choose_one_group_still_reports_its_patches(none_label):
+    event = choose_one_event("SelectExactlyOne", None)
+    event["steps"][0]["groups"][-1]["options"].insert(0, {
+        "id": "step:0/group:1/option:9", "name": none_label, "enabled": True, "selected": True,
+        "plugins": [], "masters": [], "detects": []})
+    labels = [i["label"] for i in find_missed_patches([event], load_order("Village.esp", "Extra.esp"))["missed"]
+              if i["option_id"].startswith("step:0/group:1")]
+    assert sorted(labels) == ["Village + Extra patch", "Village patch"]
+
+
+def test_a_choose_one_group_with_no_pick_still_reports_and_pick_any_groups_keep_reporting():
+    none_picked = choose_one_event("SelectAtMostOne", None)
+    assert [i["label"] for i in find_missed_patches([none_picked], load_order("Village.esp"))["missed"]
+            if i["option_id"].startswith("step:0/group:1")] == ["Village patch"]
+    pick_any = choose_one_event("SelectAny", "Village patch")
+    assert [i["label"] for i in find_missed_patches([pick_any], load_order("Village.esp", "Extra.esp"))["missed"]
+            if i["option_id"].startswith("step:0/group:1")] == ["Village + Extra patch"]
+
+
+def test_an_exclude_option_is_not_guessed_to_be_a_patch_for_the_mod_it_names():
+    for label in ("Exclude Village", "Skip Village grass", "No Village", "Village: none"):
+        option = {"name": label, "plugins": [], "detects": []}
+        assert find_missed_patches([grass_patches_event(village_option=option)],
+                                   load_order(mods=("Village",)))["missed"] == [], label
+
+
+def test_a_name_guess_is_not_made_for_an_option_the_installer_did_not_offer():
+    option = {"name": "Village grass textures", "plugins": [], "detects": []}
+    event = grass_patches_event(village_option=option)
+    event["steps"][0]["groups"][0]["options"][1]["enabled"] = False
+    assert find_missed_patches([event], load_order(mods=("Village",)))["missed"] == []
+    # Real evidence (a master that is in the list) still counts when it wasn't offered.
+    event = grass_patches_event(village_option=VILLAGE_BY_MASTERS)
+    event["steps"][0]["groups"][0]["options"][1]["enabled"] = False
+    [item] = find_missed_patches([event], load_order("Village.esp"))["missed"]
+    assert item["available"] is False
+
+
 def test_reviewed_options_are_not_repeated():
     event = grass_patches_event(village_option=VILLAGE_BY_MASTERS)
     reviews = [{"event_id": event["event_id"], "option_id": "step:0/group:0/option:1", "state": "dismissed"}]

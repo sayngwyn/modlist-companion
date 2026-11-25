@@ -599,7 +599,7 @@ class LoggerWindow(QWidget):
         self.side.setContentsMargins(0, 0, 4, 0)
         self.side.setSpacing(10)
         self.missed_box, self.missed_list, self.missed_count = self._section(
-            "Possible missed patches", "Options you skipped that patch mods you now use.", "missed")
+            "Possible missed patches", "Skipped options that look like patches for mods you use. Worth a look, not proof.", "missed")
         self.masters_box, self.masters_list, self.masters_count = self._section(
             "Missing masters", "Installed, but a plugin can't load: a master it needs isn't installed.", "masters")
         self.off_box, self.off_list, self.off_count = self._section(

@@ -180,6 +180,81 @@ not hash the binary. The five external source archives stay separate and are
 recorded in the manifests. The current publication policy requires hosting
 them under owner control beside both Logger archives.
 
+## Reusing a shipped native build
+
+A later package version can ship the native DLL of an earlier release when
+nothing the DLL is built from has changed (a Python-only fix). The strict rule
+above, a DLL built at this package's version and commit, cannot be met then:
+the DLL's version resource and the build record name the earlier build, and the
+build prefix (Qt, uibase import library and companion DLL) need not exist any
+more. Reuse mode proves the earlier build instead.
+
+`release_identity.json` carries optional fields that name the build the
+packaged DLL comes from: `native_version`, `native_commit` and
+`native_dll_sha256` (all three or none), and optionally
+`native_sqlite_sha256`. The package's own `public_semver` can move without
+them. Without them only the strict rule exists. The hashes are committed with
+the source, so a zip that was rewritten to agree with itself is still refused.
+
+`build_release.py --native-from-release-zip <earlier package.zip>` replaces
+`--native-plugin`, `--native-build-record`, `--uibase-import-library`,
+`--uibase-companion-dll` and `--sqlite-dll` (passing any of them too is an
+error). Before it reads the package it requires the files the DLL is built from
+(`src`, `CMakeLists.txt`, `CMakePresets.json`, `third_party`,
+`packaging/write-native-build-record.cmake`, `packaging/write-resources.cmake`
+and `packaging/native-dependencies.json`) to be identical at `native_commit` and
+at the release commit (`git diff --quiet`); a difference, or a `native_commit`
+that is not a commit in the repository, refuses the build. Nothing is
+extracted; from the earlier package it reads `plugins/fomod_logger.dll`,
+`plugins/fomod_logger_support/native/sqlite3.dll` and
+`fomod_logger_docs/native-build-record.json`, and requires:
+
+- the package's own manifest names the native build (its `version` and
+  `repository_commit`, or its `native_binary_from` if it reused one itself)
+  equal to `native_version` and `native_commit`, and hashes all three files as
+  read;
+- the DLL's SHA-256 equals `native_dll_sha256` in the identity (and the SQLite
+  runtime's equals `native_sqlite_sha256`, when set), independent of anything
+  the package says about itself;
+- the record's `native_dll_sha256` equals the DLL, the record's
+  `repository_commit` equals `native_commit`, and the other record fields hold
+  the same pinned values as the strict rule, with `public_version` and
+  `mo2_version` equal to `native_version`;
+- the DLL's version resource is `native_version` (not the package version),
+  with `PrivateBuild` equal to `native_commit`;
+- the SQLite runtime still matches `packaging/sqlite-runtime.json`.
+
+The uibase import library and companion DLL are not supplied. Their hashes stay
+in the unchanged build record; they were build-prefix comparison inputs.
+
+### Rebuilding the native DLL later
+
+The build prefix the 1.0.0 DLL was built in (Qt 6.7.1 and the MO2 2.5.2 uibase
+import library and companion DLL) was deleted on 2026-11-24 and has no backup. A
+future change to the native code therefore needs the prefix recreated first, as
+described under "Pinned native target" above: official Qt 6.7.1
+`win64_msvc2019_64`, and a uibase import library and companion DLL whose hashes
+match `uibase_import_library_sha256` and `uibase_companion_dll_sha256` in
+`fomod_logger_docs/native-build-record.json` (or a new build record that names
+the new ones). Until the native code changes, no rebuild is needed: reuse mode
+ships the unchanged DLL, and `git diff --quiet <native_commit> HEAD -- <native
+paths>` proves nothing it is built from moved. To reproduce the shipped DLL
+itself, check out `native_commit` (not the 1.0.1 source, whose version header
+and CMake project version stay at the native 1.0.0 on purpose).
+
+Everything else is as strict as before: exact clean Git source at
+`--expected-commit`, the pinned uibase source tree and runtime source archives
+in the source ZIP, manifests, and the zero-overwrite output rules. Both
+manifests gain `"native_binary_from": {"version", "repository_commit"}`, which
+says the DLL was not built from this package's commit. The native sources of
+the two commits are identical (the packager checks this), so the source ZIP
+still holds the native sources; to rebuild that DLL, check out `native_commit`.
+A native rebuild of the newer commit would carry the newer version resource.
+When a package ships a freshly built DLL, remove the two native fields.
+
+The FOMOD Plus package has no native DLL: `build_plus_release.py` uses only the
+package version and needs none of this.
+
 ## Runtime and publication boundaries
 
 The target MO2 recipe pins Python 3.12.3, PyQt6 6.7.1 and a locally generated

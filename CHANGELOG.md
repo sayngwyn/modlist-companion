@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.0.1
+
+Fewer false "possible missed patch" warnings (both editions).
+
+- An option you didn't pick in a choose-one group (for example "WACCF" next to
+  "WACCF + ACE", or two body-slider variants) is no longer listed as a skipped
+  patch: it was an alternative to what you picked.
+- Options named like "Exclude <mod>", "Skip <mod>" or "No <mod>" are no longer
+  guessed to be patches for that mod from the name alone.
+- An option the installer did not offer is no longer guessed from its name
+  either. It still shows when the installer's own detection or a plugin master
+  points at a mod you have.
+- The Possible missed patches heading now says they are worth a look, not proof.
+
+The standard edition's native installer is unchanged from 1.0.0 (same build);
+only the Python part changed.
+
 ## 1.0.0
 
 First release of **Modlist Companion**, in two editions: the standard edition

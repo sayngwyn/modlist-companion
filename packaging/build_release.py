@@ -16,7 +16,7 @@ import uuid
 import zipfile
 from collections.abc import Mapping
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, NamedTuple
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -38,6 +38,82 @@ UIBASE_COMMIT = NATIVE_DEPENDENCIES["uibase"]["commit"]
 UIBASE_SOURCE_PREFIX = NATIVE_DEPENDENCIES["uibase"]["source_archive_prefix"]
 FIXED_ZIP_TIME = (1980, 1, 1, 0, 0, 0)
 GIT_EXECUTABLE = shutil.which("git")
+BINARY_MANIFEST_NAME = "fomod_logger-manifest.json"
+# Members "reuse the shipped native build" mode takes from an earlier release
+# package: the native DLL, its private SQLite runtime and its build record.
+REUSED_NATIVE_MEMBERS = (
+    "plugins/fomod_logger.dll",
+    "plugins/fomod_logger_support/native/sqlite3.dll",
+    "fomod_logger_docs/native-build-record.json",
+)
+
+
+# Paths whose content decides the bytes of the native DLL. Reuse mode refuses
+# unless they are identical at the native commit and the release commit.
+NATIVE_SOURCE_PATHS = (
+    "src",
+    "CMakeLists.txt",
+    "CMakePresets.json",
+    "third_party",
+    "packaging/write-native-build-record.cmake",
+    "packaging/native-dependencies.json",
+    "packaging/write-resources.cmake",
+)
+
+
+class NativeIdentity(NamedTuple):
+    """The earlier build a package's native DLL comes from."""
+
+    version: str
+    commit: str
+    dll_sha256: str
+    sqlite_sha256: str | None
+
+
+def _validate_sha256_identity(value: object, *, label: str) -> str:
+    if (
+        not isinstance(value, str)
+        or len(value) != 64
+        or any(character not in "0123456789abcdef" for character in value)
+    ):
+        raise ValueError(f"{label} must be a lowercase SHA-256")
+    return value
+
+
+def native_identity(identity: Mapping[str, Any]) -> NativeIdentity | None:
+    """Return the native build the identity names, or None when it names none.
+
+    ``native_version``, ``native_commit`` and ``native_dll_sha256`` appear
+    together or not at all; ``native_sqlite_sha256`` is optional beside them.
+    They say which build the packaged native DLL comes from when it is not
+    rebuilt for this package version. Without them every package is strict: the
+    DLL must be built for this version at this commit.
+    """
+
+    required = ("native_version", "native_commit", "native_dll_sha256")
+    present = [name in identity for name in required]
+    if not any(present) and "native_sqlite_sha256" not in identity:
+        return None
+    if not all(present):
+        raise ValueError(
+            "release_identity.json needs native_version, native_commit and "
+            "native_dll_sha256 together"
+        )
+    version = identity["native_version"]
+    if not isinstance(version, str) or not version.strip():
+        raise ValueError("release_identity.json native_version must be a version string")
+    commit = identity["native_commit"]
+    if not isinstance(commit, str):
+        raise ValueError("native_commit must be a lowercase 40-hex Git commit")
+    _validate_commit_identity(commit, label="native_commit")
+    dll_sha256 = _validate_sha256_identity(
+        identity["native_dll_sha256"], label="native_dll_sha256"
+    )
+    sqlite_sha256 = identity.get("native_sqlite_sha256")
+    if sqlite_sha256 is not None:
+        _validate_sha256_identity(sqlite_sha256, label="native_sqlite_sha256")
+    return NativeIdentity(version, commit, dll_sha256, sqlite_sha256)
+
 
 BINARY_COMMIT_FILES = {
     "plugins/fomod_logger.py": "python/fomod_logger_plugin.py",
@@ -155,6 +231,9 @@ def _validate_commit_identity(commit: str, *, label: str) -> str:
     ):
         raise ValueError(f"{label} must be a lowercase 40-hex Git commit")
     return commit
+
+
+NATIVE_IDENTITY = native_identity(IDENTITY)
 
 
 def _git_identity(root: Path) -> tuple[Path, str]:
@@ -440,6 +519,7 @@ def build_source_archive_bytes(
     uibase_source_files: Mapping[str, bytes],
     commit: str,
     runtime_source_components: list[dict[str, Any]],
+    native_binary_from: Mapping[str, str] | None = None,
 ) -> bytes:
     combined_files = dict(source_files)
     for name, data in uibase_source_files.items():
@@ -472,6 +552,10 @@ def build_source_archive_bytes(
             name: sha256(data) for name, data in sorted(combined_files.items())
         },
     }
+    if native_binary_from is not None:
+        # The native sources of this commit are identical to the sources the
+        # packaged DLL was built from; say which build that was.
+        manifest["native_binary_from"] = dict(native_binary_from)
     prefixed[f"{SOURCE_ARCHIVE_ROOT}/fomod_logger-source-manifest.json"] = (
         json.dumps(manifest, indent=2, sort_keys=True) + "\n"
     ).encode("utf-8")
@@ -485,6 +569,7 @@ def build_binary_archive_bytes(
     source_filename: str,
     source_sha256: str,
     runtime_source_components: list[dict[str, Any]],
+    native_binary_from: Mapping[str, str] | None = None,
 ) -> bytes:
     files = dict(binary_files)
     manifest = {
@@ -504,7 +589,11 @@ def build_binary_archive_bytes(
         "native_build_record": "fomod_logger_docs/native-build-record.json",
         "files": {name: sha256(data) for name, data in sorted(files.items())},
     }
-    files["fomod_logger-manifest.json"] = (
+    if native_binary_from is not None:
+        # plugins/fomod_logger.dll (and its build record) come from an earlier
+        # release build, not from a build of this package's commit.
+        manifest["native_binary_from"] = dict(native_binary_from)
+    files[BINARY_MANIFEST_NAME] = (
         json.dumps(manifest, indent=2, sort_keys=True) + "\n"
     ).encode("utf-8")
     return zip_bytes(files)
@@ -558,21 +647,22 @@ $version = (Get-Item -LiteralPath $env:FOMOD_LOGGER_NATIVE_PLUGIN_PATH -ErrorAct
     return json.loads(result.stdout)
 
 
-def validate_native_inputs(
+def _validate_native_binary_and_record(
     *,
     native_bytes: bytes,
     native_metadata: Mapping[str, Any],
     build_record: Mapping[str, Any],
-    uibase_import_library_bytes: bytes,
-    uibase_companion_dll_bytes: bytes,
     commit: str,
+    version: str,
+    expected_record: Mapping[str, Any],
+    commit_label: str,
 ) -> None:
     if pe_machine(native_bytes) != 0x8664:
         raise ValueError("native plugin is not an x86-64 PE image")
 
     expected_metadata = {
-        "FileVersion": PACKAGE_VERSION,
-        "ProductVersion": PACKAGE_VERSION,
+        "FileVersion": version,
+        "ProductVersion": version,
         "PrivateBuild": commit,
         "OriginalFilename": "fomod_logger.dll",
         "IsDebug": False,
@@ -588,28 +678,240 @@ def validate_native_inputs(
                 f"native version resource {key}={actual!r}, expected {expected!r}"
             )
 
-    for key, expected in EXPECTED_BUILD_RECORD.items():
+    for key, expected in expected_record.items():
         if build_record.get(key) != expected:
             raise ValueError(
                 f"native build record {key}={build_record.get(key)!r}, "
                 f"expected {expected!r}"
             )
     if build_record.get("repository_commit") != commit:
-        raise ValueError("native build record commit does not match release commit")
+        raise ValueError(
+            f"native build record commit does not match {commit_label}"
+        )
     for required_identity in ("cxx_compiler_version", "cmake_version"):
         if not str(build_record.get(required_identity, "")):
             raise ValueError(f"native build record omits {required_identity}")
 
-    expected_hashes = {
-        "native_dll_sha256": sha256(native_bytes),
-        "uibase_import_library_sha256": sha256(uibase_import_library_bytes),
-        "uibase_companion_dll_sha256": sha256(uibase_companion_dll_bytes),
-    }
+
+def _check_record_hashes(
+    build_record: Mapping[str, Any], expected_hashes: Mapping[str, str]
+) -> None:
     for key, expected in expected_hashes.items():
         if build_record.get(key) != expected:
             raise ValueError(
                 f"native build record {key} does not match the supplied build input"
             )
+
+
+def validate_native_inputs(
+    *,
+    native_bytes: bytes,
+    native_metadata: Mapping[str, Any],
+    build_record: Mapping[str, Any],
+    uibase_import_library_bytes: bytes,
+    uibase_companion_dll_bytes: bytes,
+    commit: str,
+) -> None:
+    """Strict check: a native DLL built for this package version at this commit."""
+
+    _validate_native_binary_and_record(
+        native_bytes=native_bytes,
+        native_metadata=native_metadata,
+        build_record=build_record,
+        commit=commit,
+        version=PACKAGE_VERSION,
+        expected_record=EXPECTED_BUILD_RECORD,
+        commit_label="release commit",
+    )
+    _check_record_hashes(
+        build_record,
+        {
+            "native_dll_sha256": sha256(native_bytes),
+            "uibase_import_library_sha256": sha256(uibase_import_library_bytes),
+            "uibase_companion_dll_sha256": sha256(uibase_companion_dll_bytes),
+        },
+    )
+
+
+def validate_reused_native_inputs(
+    *,
+    native_bytes: bytes,
+    native_metadata: Mapping[str, Any],
+    build_record: Mapping[str, Any],
+    native_version: str,
+    native_commit: str,
+) -> None:
+    """Check a native DLL reused from an earlier release build.
+
+    The version resource and the record are held to the native version and
+    commit, not to this package's. The uibase import library and companion DLL
+    are not supplied: the record keeps their hashes from the original build
+    (the record itself is unchanged), and only the DLL's own hash is re-proved.
+    """
+
+    _validate_native_binary_and_record(
+        native_bytes=native_bytes,
+        native_metadata=native_metadata,
+        build_record=build_record,
+        commit=native_commit,
+        version=native_version,
+        expected_record={
+            **EXPECTED_BUILD_RECORD,
+            "public_version": native_version,
+            "mo2_version": native_version,
+        },
+        commit_label="native commit",
+    )
+    _check_record_hashes(build_record, {"native_dll_sha256": sha256(native_bytes)})
+    for key in ("uibase_import_library_sha256", "uibase_companion_dll_sha256"):
+        value = build_record.get(key)
+        if not isinstance(value, str) or len(value) != 64 or any(
+            character not in "0123456789abcdef" for character in value
+        ):
+            raise ValueError(f"native build record {key} is not a SHA-256")
+
+
+class ReusedNative(NamedTuple):
+    """The native parts taken, verified, from an earlier release package."""
+
+    native_bytes: bytes
+    sqlite_bytes: bytes
+    build_record_bytes: bytes
+    build_record: dict[str, Any]
+    native_binary_from: dict[str, str]
+    package_sha256: str
+
+
+def read_native_from_release_zip(
+    package: Path, *, identity: NativeIdentity
+) -> ReusedNative:
+    """Read the native DLL, SQLite runtime and build record out of a release zip.
+
+    Nothing is extracted. The zip's own manifest must name the native build
+    (its version and commit, or the ``native_binary_from`` it carries when it
+    reused one itself) and hash all three members exactly. That only proves the
+    zip agrees with itself, so the DLL (and the SQLite runtime, when the
+    identity pins it) must also hash to the value committed in
+    ``release_identity.json``.
+    """
+
+    native_version, native_commit = identity.version, identity.commit
+
+    if package.is_symlink() or not package.is_file():
+        raise ValueError(f"native release package is not a regular file: {package}")
+    package_sha256 = file_sha256(package)
+    with zipfile.ZipFile(package) as archive:
+        names = archive.namelist()
+        if len(names) != len(set(names)):
+            raise ValueError("native release package repeats a member name")
+        wanted = (*REUSED_NATIVE_MEMBERS, BINARY_MANIFEST_NAME)
+        missing = [name for name in wanted if name not in names]
+        if missing:
+            raise ValueError(f"native release package lacks {missing!r}")
+        data = {name: archive.read(name) for name in wanted}
+
+    manifest = json.loads(data[BINARY_MANIFEST_NAME].decode("utf-8"))
+    if manifest.get("product") != PRODUCT_NAME:
+        raise ValueError("native release package is for a different product")
+    origin = manifest.get("native_binary_from")
+    if origin is None:
+        origin = {
+            "version": manifest.get("version"),
+            "repository_commit": manifest.get("repository_commit"),
+        }
+    expected_origin = {"version": native_version, "repository_commit": native_commit}
+    if origin != expected_origin:
+        raise ValueError(
+            f"native release package native build {origin!r} does not match "
+            f"the release identity's {expected_origin!r}"
+        )
+    listed = manifest.get("files", {})
+    for name in REUSED_NATIVE_MEMBERS:
+        if listed.get(name) != sha256(data[name]):
+            raise ValueError(
+                f"{name} does not match the native release package's manifest"
+            )
+
+    if sha256(data[REUSED_NATIVE_MEMBERS[0]]) != identity.dll_sha256:
+        raise ValueError(
+            "native DLL SHA-256 does not match native_dll_sha256 in "
+            "release_identity.json"
+        )
+    if (
+        identity.sqlite_sha256 is not None
+        and sha256(data[REUSED_NATIVE_MEMBERS[1]]) != identity.sqlite_sha256
+    ):
+        raise ValueError(
+            "SQLite runtime SHA-256 does not match native_sqlite_sha256 in "
+            "release_identity.json"
+        )
+
+    return ReusedNative(
+        native_bytes=data[REUSED_NATIVE_MEMBERS[0]],
+        sqlite_bytes=data[REUSED_NATIVE_MEMBERS[1]],
+        build_record_bytes=data[REUSED_NATIVE_MEMBERS[2]],
+        build_record=json.loads(data[REUSED_NATIVE_MEMBERS[2]].decode("utf-8")),
+        native_binary_from=expected_origin,
+        package_sha256=package_sha256,
+    )
+
+
+def check_native_sources_unchanged(
+    root: Path, *, native_commit: str, release_commit: str
+) -> None:
+    """Refuse unless everything the native DLL is built from is unchanged.
+
+    Reusing the DLL of ``native_commit`` is only honest when the files that
+    decide its bytes are identical at ``release_commit``.
+    """
+
+    if GIT_EXECUTABLE is None:
+        raise RuntimeError("Git is required to compare native sources")
+    _validate_commit_identity(native_commit, label="native_commit")
+    environment = _clean_git_environment()
+    known = subprocess.run(
+        [
+            GIT_EXECUTABLE,
+            "-C",
+            str(root),
+            "cat-file",
+            "-e",
+            f"{native_commit}^{{commit}}",
+        ],
+        check=False,
+        capture_output=True,
+        env=environment,
+    )
+    if known.returncode != 0:
+        raise RuntimeError(
+            f"native commit {native_commit} is not a commit in this repository"
+        )
+    result = subprocess.run(
+        [
+            GIT_EXECUTABLE,
+            "-C",
+            str(root),
+            "diff",
+            "--quiet",
+            native_commit,
+            release_commit,
+            "--",
+            *NATIVE_SOURCE_PATHS,
+        ],
+        check=False,
+        capture_output=True,
+        env=environment,
+    )
+    if result.returncode == 1:
+        raise RuntimeError(
+            f"native sources changed between {native_commit} and {release_commit}; "
+            "the shipped native DLL cannot be reused (paths: "
+            + ", ".join(NATIVE_SOURCE_PATHS)
+            + ")"
+        )
+    if result.returncode != 0:
+        message = result.stderr.decode("utf-8", "replace").strip()
+        raise RuntimeError(f"git diff of native sources failed: {message}")
 
 
 def _write_pair_without_overwrite(
@@ -641,18 +943,55 @@ def _write_pair_without_overwrite(
 
 
 def build(
-    native_plugin: Path,
-    native_build_record: Path,
+    native_plugin: Path | None,
+    native_build_record: Path | None,
     uibase_source: Path,
-    uibase_import_library: Path,
-    uibase_companion_dll: Path,
-    sqlite_dll: Path,
+    uibase_import_library: Path | None,
+    uibase_companion_dll: Path | None,
+    sqlite_dll: Path | None,
     runtime_source_paths: Mapping[str, Path],
     output: Path,
     source_output: Path,
     *,
     expected_commit: str,
+    native_from_release_zip: Path | None = None,
 ) -> dict[str, object]:
+    """Build the paired archives.
+
+    Strict (default): the five native inputs are a DLL built for this package
+    version at ``expected_commit``, its build record, the uibase import library
+    and companion DLL, and the SQLite runtime.
+
+    Reuse (``native_from_release_zip``, and none of those five): the native
+    DLL, SQLite runtime and build record come from an earlier release package,
+    held to the release identity's ``native_version`` and ``native_commit``.
+    """
+
+    native_inputs = (
+        native_plugin,
+        native_build_record,
+        uibase_import_library,
+        uibase_companion_dll,
+        sqlite_dll,
+    )
+    if native_from_release_zip is not None:
+        if any(item is not None for item in native_inputs):
+            raise ValueError(
+                "--native-from-release-zip replaces the native plugin, build "
+                "record, uibase import library, uibase companion DLL and "
+                "SQLite inputs; do not pass them too"
+            )
+        if NATIVE_IDENTITY is None:
+            raise ValueError(
+                "reusing a native build needs native_version, native_commit and "
+                "native_dll_sha256 in release_identity.json"
+            )
+    elif any(item is None for item in native_inputs):
+        raise ValueError(
+            "strict mode needs the native plugin, build record, uibase import "
+            "library, uibase companion DLL and SQLite DLL "
+            "(or --native-from-release-zip)"
+        )
     _validate_commit_identity(expected_commit, label="expected commit")
     if output.resolve() == source_output.resolve():
         raise ValueError("binary and source outputs must be different paths")
@@ -710,31 +1049,64 @@ def build(
             "utf-8"
         )
     )
-    native_bytes = native_plugin.read_bytes()
-    uibase_import_library_bytes = uibase_import_library.read_bytes()
-    uibase_companion_dll_bytes = uibase_companion_dll.read_bytes()
-    build_record_bytes = native_build_record.read_bytes()
-    build_record = json.loads(build_record_bytes.decode("utf-8"))
-    validate_native_inputs(
-        native_bytes=native_bytes,
-        native_metadata=read_native_version_metadata(native_plugin),
-        build_record=build_record,
-        uibase_import_library_bytes=uibase_import_library_bytes,
-        uibase_companion_dll_bytes=uibase_companion_dll_bytes,
-        commit=commit,
-    )
+    native_binary_from: dict[str, str] | None = None
+    if native_from_release_zip is not None:
+        assert NATIVE_IDENTITY is not None  # checked above
+        native_version, native_commit = (
+            NATIVE_IDENTITY.version,
+            NATIVE_IDENTITY.commit,
+        )
+        check_native_sources_unchanged(
+            ROOT, native_commit=native_commit, release_commit=commit
+        )
+        reused = read_native_from_release_zip(
+            native_from_release_zip, identity=NATIVE_IDENTITY
+        )
+        native_bytes = reused.native_bytes
+        sqlite_bytes = reused.sqlite_bytes
+        build_record_bytes = reused.build_record_bytes
+        with tempfile.TemporaryDirectory(prefix="fomod-logger-native-") as scratch:
+            scratch_dll = Path(scratch) / "fomod_logger.dll"
+            scratch_dll.write_bytes(native_bytes)
+            native_metadata = read_native_version_metadata(scratch_dll)
+        validate_reused_native_inputs(
+            native_bytes=native_bytes,
+            native_metadata=native_metadata,
+            build_record=reused.build_record,
+            native_version=native_version,
+            native_commit=native_commit,
+        )
+        native_binary_from = reused.native_binary_from
+    else:
+        assert native_plugin and native_build_record and sqlite_dll
+        assert uibase_import_library and uibase_companion_dll
+        native_bytes = native_plugin.read_bytes()
+        uibase_import_library_bytes = uibase_import_library.read_bytes()
+        uibase_companion_dll_bytes = uibase_companion_dll.read_bytes()
+        sqlite_bytes = sqlite_dll.read_bytes()
+        build_record_bytes = native_build_record.read_bytes()
+        build_record = json.loads(build_record_bytes.decode("utf-8"))
+        validate_native_inputs(
+            native_bytes=native_bytes,
+            native_metadata=read_native_version_metadata(native_plugin),
+            build_record=build_record,
+            uibase_import_library_bytes=uibase_import_library_bytes,
+            uibase_companion_dll_bytes=uibase_companion_dll_bytes,
+            commit=commit,
+        )
 
     source_archive = build_source_archive_bytes(
         source_files,
         uibase_source_files=uibase_source_files,
         commit=commit,
         runtime_source_components=runtime_source_components,
+        native_binary_from=native_binary_from,
     )
     source_archive_sha256 = sha256(source_archive)
     binary_files = collect_binary_files(
         source_files=source_files,
         native_bytes=native_bytes,
-        sqlite_bytes=sqlite_dll.read_bytes(),
+        sqlite_bytes=sqlite_bytes,
         build_record_bytes=build_record_bytes,
         expected_sqlite_sha256=sqlite_lock["file_sha256"],
     )
@@ -744,6 +1116,7 @@ def build(
         source_filename=source_output.name,
         source_sha256=source_archive_sha256,
         runtime_source_components=runtime_source_components,
+        native_binary_from=native_binary_from,
     )
 
     if repository_commit(
@@ -758,12 +1131,20 @@ def build(
         verifier_commit=commit,
     ) != UIBASE_COMMIT:
         raise RuntimeError("uibase source changed while release archives were assembled")
-    if native_plugin.read_bytes() != native_bytes:
-        raise RuntimeError("native plugin changed while release archives were assembled")
-    if uibase_import_library.read_bytes() != uibase_import_library_bytes:
-        raise RuntimeError("uibase import library changed during packaging")
-    if uibase_companion_dll.read_bytes() != uibase_companion_dll_bytes:
-        raise RuntimeError("uibase companion DLL changed during packaging")
+    if native_from_release_zip is not None:
+        if file_sha256(native_from_release_zip) != reused.package_sha256:
+            raise RuntimeError(
+                "native release package changed while release archives were assembled"
+            )
+    else:
+        if native_plugin.read_bytes() != native_bytes:
+            raise RuntimeError(
+                "native plugin changed while release archives were assembled"
+            )
+        if uibase_import_library.read_bytes() != uibase_import_library_bytes:
+            raise RuntimeError("uibase import library changed during packaging")
+        if uibase_companion_dll.read_bytes() != uibase_companion_dll_bytes:
+            raise RuntimeError("uibase companion DLL changed during packaging")
     validate_runtime_source_archives(runtime_source_paths, runtime_sources_from_commit)
 
     _write_pair_without_overwrite(
@@ -774,7 +1155,7 @@ def build(
         binary_manifest = json.loads(
             archive.read("fomod_logger-manifest.json").decode("utf-8")
         )
-    return {
+    result: dict[str, object] = {
         "output": str(output),
         "sha256": sha256(binary_archive),
         "file_count": len(binary_files) + 1,
@@ -791,17 +1172,31 @@ def build(
         ],
         "required_external_source_count": len(runtime_source_components),
     }
+    if native_binary_from is not None:
+        result["native_binary_from"] = native_binary_from
+    return result
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--native-plugin", required=True, type=Path)
+    parser.add_argument("--native-plugin", type=Path)
     parser.add_argument("--expected-commit", required=True)
-    parser.add_argument("--native-build-record", required=True, type=Path)
+    parser.add_argument("--native-build-record", type=Path)
     parser.add_argument("--uibase-source", required=True, type=Path)
-    parser.add_argument("--uibase-import-library", required=True, type=Path)
-    parser.add_argument("--uibase-companion-dll", required=True, type=Path)
-    parser.add_argument("--sqlite-dll", required=True, type=Path)
+    parser.add_argument("--uibase-import-library", type=Path)
+    parser.add_argument("--uibase-companion-dll", type=Path)
+    parser.add_argument("--sqlite-dll", type=Path)
+    parser.add_argument(
+        "--native-from-release-zip",
+        type=Path,
+        help=(
+            "reuse the native DLL, SQLite runtime and build record of an earlier "
+            "release package (its native build must match native_version and "
+            "native_commit in release_identity.json); replaces --native-plugin, "
+            "--native-build-record, --uibase-import-library, "
+            "--uibase-companion-dll and --sqlite-dll"
+        ),
+    )
     parser.add_argument("--qtbase-source", required=True, type=Path)
     parser.add_argument("--qtdeclarative-source", required=True, type=Path)
     parser.add_argument("--pyqt6-source", required=True, type=Path)
@@ -830,6 +1225,7 @@ def main() -> None:
                 args.output,
                 args.source_output,
                 expected_commit=args.expected_commit,
+                native_from_release_zip=args.native_from_release_zip,
             ),
             indent=2,
             sort_keys=True,

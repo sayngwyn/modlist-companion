@@ -800,10 +800,10 @@ def test_release_identity_representations_and_canonical_filenames(tmp_path) -> N
 
     assert identity["public_semver"] == release.PACKAGE_VERSION
     assert identity["pep440"] == pyproject["project"]["version"]
-    assert identity["mo2_version"] == "1.0.0"
-    assert release.BINARY_ARCHIVE_NAME == "modlist-companion-1.0.0.zip"
+    assert identity["mo2_version"] == identity["public_semver"] == "1.0.1"
+    assert release.BINARY_ARCHIVE_NAME == "modlist-companion-1.0.1.zip"
     assert release.SOURCE_ARCHIVE_NAME == (
-        "modlist-companion-1.0.0-source.zip"
+        "modlist-companion-1.0.1-source.zip"
     )
     cache = presets["configurePresets"][0]["cacheVariables"]
     assert cache["FOMOD_LOGGER_RELEASE_BUILD"] is True
@@ -1494,7 +1494,7 @@ def test_the_plus_archives_name_their_contents_and_their_source():
     source_zip = plus.build_plus_source_archive_bytes(sources, commit="e" * 40)
     binary_zip = plus.build_plus_binary_archive_bytes(files, commit="e" * 40, source_filename=plus.SOURCE_ARCHIVE_NAME,
                                                       source_sha256=plus.common.sha256(source_zip))
-    assert plus.BINARY_ARCHIVE_NAME == "modlist-companion-plus-1.0.0.zip"
+    assert plus.BINARY_ARCHIVE_NAME == "modlist-companion-plus-1.0.1.zip"
     with zipfile.ZipFile(io.BytesIO(binary_zip)) as archive:
         manifest = json.loads(archive.read("fomod_logger_plus-manifest.json"))
         assert manifest["product"] == "Modlist Companion (for FOMOD Plus)" and manifest["repository_commit"] == "e" * 40
@@ -1532,3 +1532,561 @@ def test_the_packaged_readmes_name_the_product_and_say_which_edition_to_pick():
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     identity = json.loads((ROOT / "release_identity.json").read_text(encoding="utf-8"))
     assert f"## {identity['public_semver']}" in changelog
+
+
+# --- Reusing the shipped native build (docs/BUILD_CONTRACT.md, "Reusing a shipped native build") ---
+
+NATIVE_REUSE_VERSION = "1.0.0"
+NATIVE_REUSE_COMMIT = "3fb5486ec60ba89cf3fca5f2be0c00d941eb9c71"
+
+
+def _native_reuse_record(release, native_bytes, **changes):
+    record = {
+        **release.EXPECTED_BUILD_RECORD,
+        "public_version": NATIVE_REUSE_VERSION,
+        "mo2_version": NATIVE_REUSE_VERSION,
+        "repository_commit": NATIVE_REUSE_COMMIT,
+        "cxx_compiler_version": "19.36.32548.0",
+        "cmake_version": "4.4.2",
+        "native_dll_sha256": release.sha256(native_bytes),
+        "uibase_import_library_sha256": release.sha256(b"original import library"),
+        "uibase_companion_dll_sha256": release.sha256(b"original companion dll"),
+    }
+    record.update(changes)
+    return record
+
+
+def _native_reuse_metadata(**changes):
+    metadata = {
+        "FileVersion": NATIVE_REUSE_VERSION,
+        "ProductVersion": NATIVE_REUSE_VERSION,
+        "PrivateBuild": NATIVE_REUSE_COMMIT,
+        "OriginalFilename": "fomod_logger.dll",
+        "IsDebug": False,
+        "IsPreRelease": False,
+        "IsPrivateBuild": True,
+    }
+    metadata.update(changes)
+    return metadata
+
+
+def _earlier_release_zip(
+    release,
+    monkeypatch,
+    tmp_path,
+    *,
+    native_bytes=None,
+    record_changes=None,
+    version=NATIVE_REUSE_VERSION,
+    commit=NATIVE_REUSE_COMMIT,
+    native_binary_from=None,
+    sqlite_bytes=b"test sqlite runtime",
+    name="earlier.zip",
+):
+    """A package shaped like the shipped 1.0.0 one: manifest, DLL, SQLite, record."""
+
+    monkeypatch.setattr(release, "PACKAGE_VERSION", version)
+    native_bytes = _minimal_x64_pe() if native_bytes is None else native_bytes
+    record = _native_reuse_record(release, native_bytes, **(record_changes or {}))
+    record_bytes = (json.dumps(record) + "\n").encode("utf-8")
+    files = release.collect_binary_files(
+        source_files=_worktree_source_files(release),
+        native_bytes=native_bytes,
+        sqlite_bytes=sqlite_bytes,
+        build_record_bytes=record_bytes,
+        expected_sqlite_sha256=release.sha256(sqlite_bytes),
+    )
+    package = tmp_path / name
+    package.write_bytes(
+        release.build_binary_archive_bytes(
+            files,
+            commit=commit,
+            source_filename="earlier-source.zip",
+            source_sha256="b" * 64,
+            runtime_source_components=release._locked_runtime_components(),
+            native_binary_from=native_binary_from,
+        )
+    )
+    return package, native_bytes, sqlite_bytes, record_bytes
+
+
+def _replace_zip_members(package: Path, replacements: dict) -> Path:
+    tampered = package.with_name("tampered-" + package.name)
+    with zipfile.ZipFile(package) as source, zipfile.ZipFile(tampered, "w") as target:
+        for info in source.infolist():
+            data = replacements.get(info.filename, source.read(info.filename))
+            target.writestr(info.filename, data)
+    return tampered
+
+
+def _reuse_identity(release, **changes):
+    """The identity pinning the genuine fixture package's DLL and SQLite runtime."""
+
+    values = {
+        "version": NATIVE_REUSE_VERSION,
+        "commit": NATIVE_REUSE_COMMIT,
+        "dll_sha256": release.sha256(_minimal_x64_pe()),
+        "sqlite_sha256": release.sha256(b"test sqlite runtime"),
+    }
+    values.update(changes)
+    return release.NativeIdentity(**values)
+
+
+def _read_reused(release, package, **identity_changes):
+    return release.read_native_from_release_zip(
+        package, identity=_reuse_identity(release, **identity_changes)
+    )
+
+
+def _validate_reused(release, reused, **metadata_changes):
+    release.validate_reused_native_inputs(
+        native_bytes=reused.native_bytes,
+        native_metadata=_native_reuse_metadata(**metadata_changes),
+        build_record=reused.build_record,
+        native_version=NATIVE_REUSE_VERSION,
+        native_commit=NATIVE_REUSE_COMMIT,
+    )
+
+
+def test_release_identity_names_the_shipped_native_build() -> None:
+    release = _release_module()
+    identity = release.NATIVE_IDENTITY
+    assert (identity.version, identity.commit) == (NATIVE_REUSE_VERSION, NATIVE_REUSE_COMMIT)
+    assert len(identity.dll_sha256) == 64 and len(identity.sqlite_sha256) == 64
+    assert release.native_identity({"public_semver": "1.0.1"}) is None
+    complete = {
+        "native_version": "1.0.0",
+        "native_commit": NATIVE_REUSE_COMMIT,
+        "native_dll_sha256": "a" * 64,
+    }
+    assert release.native_identity(complete).sqlite_sha256 is None
+    for name in complete:
+        incomplete = {key: value for key, value in complete.items() if key != name}
+        with pytest.raises(ValueError, match="together"):
+            release.native_identity(incomplete)
+    with pytest.raises(ValueError, match="together"):
+        release.native_identity({"native_sqlite_sha256": "a" * 64})
+    with pytest.raises(ValueError, match="40-hex"):
+        release.native_identity({**complete, "native_commit": "3FB5486"})
+    with pytest.raises(ValueError, match="SHA-256"):
+        release.native_identity({**complete, "native_dll_sha256": "ABC"})
+    with pytest.raises(ValueError, match="SHA-256"):
+        release.native_identity({**complete, "native_sqlite_sha256": "ABC"})
+
+
+def test_reuse_mode_accepts_a_genuine_earlier_package(monkeypatch, tmp_path) -> None:
+    release = _release_module()
+    package, native_bytes, sqlite_bytes, record_bytes = _earlier_release_zip(
+        release, monkeypatch, tmp_path
+    )
+    # The package being built is a later version; the native parts are still accepted.
+    monkeypatch.setattr(release, "PACKAGE_VERSION", "1.0.1")
+    reused = _read_reused(release, package)
+    assert reused.native_bytes == native_bytes
+    assert reused.sqlite_bytes == sqlite_bytes
+    assert reused.build_record_bytes == record_bytes
+    assert reused.native_binary_from == {
+        "version": NATIVE_REUSE_VERSION,
+        "repository_commit": NATIVE_REUSE_COMMIT,
+    }
+    # The DLL's version resource is held to the native version, not the package version.
+    _validate_reused(release, reused)
+    with pytest.raises(ValueError, match="FileVersion"):
+        _validate_reused(release, reused, FileVersion="1.0.1")
+
+
+def test_reuse_mode_accepts_a_package_that_itself_reused_the_native_build(
+    monkeypatch, tmp_path
+) -> None:
+    release = _release_module()
+    package, native_bytes, *_ = _earlier_release_zip(
+        release,
+        monkeypatch,
+        tmp_path,
+        version="1.0.1",
+        commit="a" * 40,
+        native_binary_from={
+            "version": NATIVE_REUSE_VERSION,
+            "repository_commit": NATIVE_REUSE_COMMIT,
+        },
+    )
+    assert _read_reused(release, package).native_bytes == native_bytes
+
+
+def test_reuse_mode_rejects_a_tampered_dll(monkeypatch, tmp_path) -> None:
+    release = _release_module()
+    package, native_bytes, *_ = _earlier_release_zip(release, monkeypatch, tmp_path)
+    tampered = _replace_zip_members(
+        package, {"plugins/fomod_logger.dll": native_bytes + b"tampered"}
+    )
+    with pytest.raises(ValueError, match="does not match the native release package"):
+        _read_reused(release, tampered)
+
+    # A DLL whose manifest entry was rewritten to match still fails the build record.
+    forged_dll = native_bytes + b"forged"
+    forged, *_ = _earlier_release_zip(
+        release,
+        monkeypatch,
+        tmp_path,
+        native_bytes=forged_dll,
+        record_changes={"native_dll_sha256": release.sha256(native_bytes)},
+        name="forged.zip",
+    )
+    with pytest.raises(ValueError, match="native_dll_sha256"):
+        _validate_reused(release, _read_reused(release, forged, dll_sha256=release.sha256(forged_dll)))
+
+    # A DLL swapped with the record AND the manifest rewritten to agree with it
+    # is a consistent zip; only the hash committed in the identity refuses it.
+    swapped, *_ = _earlier_release_zip(
+        release, monkeypatch, tmp_path, native_bytes=forged_dll, name="swapped.zip"
+    )
+    consistent = _read_reused(release, swapped, dll_sha256=release.sha256(forged_dll))
+    _validate_reused(release, consistent)  # the zip alone agrees with itself
+    with pytest.raises(ValueError, match="native_dll_sha256 in release_identity"):
+        _read_reused(release, swapped)
+
+    swapped_sqlite, *_ = _earlier_release_zip(
+        release, monkeypatch, tmp_path, sqlite_bytes=b"another sqlite", name="sqlite.zip"
+    )
+    with pytest.raises(ValueError, match="native_sqlite_sha256 in release_identity"):
+        _read_reused(release, swapped_sqlite)
+    assert _read_reused(
+        release, swapped_sqlite, sqlite_sha256=None
+    ).sqlite_bytes == b"another sqlite"
+
+
+def test_reuse_mode_rejects_a_tampered_sqlite_runtime_or_record(
+    monkeypatch, tmp_path
+) -> None:
+    release = _release_module()
+    package, native_bytes, sqlite_bytes, record_bytes = _earlier_release_zip(
+        release, monkeypatch, tmp_path
+    )
+    for member, data in (
+        ("plugins/fomod_logger_support/native/sqlite3.dll", sqlite_bytes + b"x"),
+        ("fomod_logger_docs/native-build-record.json", record_bytes + b" "),
+    ):
+        tampered = _replace_zip_members(package, {member: data})
+        with pytest.raises(ValueError, match="does not match the native release package"):
+            _read_reused(release, tampered)
+
+
+def test_reuse_mode_rejects_a_record_or_package_from_another_commit(
+    monkeypatch, tmp_path
+) -> None:
+    release = _release_module()
+    wrong_record, *_ = _earlier_release_zip(
+        release,
+        monkeypatch,
+        tmp_path,
+        record_changes={"repository_commit": "e" * 40},
+        name="wrong-record.zip",
+    )
+    with pytest.raises(ValueError, match="commit does not match native commit"):
+        _validate_reused(release, _read_reused(release, wrong_record))
+
+    genuine, *_ = _earlier_release_zip(release, monkeypatch, tmp_path)
+    with pytest.raises(ValueError, match="PrivateBuild"):
+        _validate_reused(release, _read_reused(release, genuine), PrivateBuild="e" * 40)
+
+    other, *_ = _earlier_release_zip(
+        release, monkeypatch, tmp_path, commit="e" * 40, name="other.zip"
+    )
+    with pytest.raises(ValueError, match="does not match the release identity"):
+        _read_reused(release, other)
+
+    incomplete = tmp_path / "incomplete.zip"
+    with zipfile.ZipFile(incomplete, "w") as archive:
+        archive.writestr("readme.txt", b"no native parts")
+    with pytest.raises(ValueError, match="lacks"):
+        _read_reused(release, incomplete)
+
+
+def test_strict_mode_still_binds_the_dll_to_the_package_version() -> None:
+    release = _release_module()
+    commit, native_bytes, import_lib, companion, metadata, record = _native_fixture(release)
+    strict = dict(
+        native_bytes=native_bytes,
+        uibase_import_library_bytes=import_lib,
+        uibase_companion_dll_bytes=companion,
+        commit=commit,
+    )
+    release.validate_native_inputs(native_metadata=metadata, build_record=record, **strict)
+    older = {**metadata, "FileVersion": "0.9.0", "ProductVersion": "0.9.0"}
+    with pytest.raises(ValueError, match="FileVersion"):
+        release.validate_native_inputs(native_metadata=older, build_record=record, **strict)
+    with pytest.raises(ValueError, match="commit does not match release commit"):
+        release.validate_native_inputs(
+            native_metadata=metadata,
+            build_record={**record, "repository_commit": "e" * 40},
+            **strict,
+        )
+
+
+def test_build_chooses_exactly_one_native_source(monkeypatch, tmp_path) -> None:
+    release = _release_module()
+    output = tmp_path / "out" / release.BINARY_ARCHIVE_NAME
+    source_output = tmp_path / "out" / release.SOURCE_ARCHIVE_NAME
+    arguments = (None, None, tmp_path / "uibase", None, None, None, {}, output, source_output)
+    earlier = tmp_path / "earlier.zip"
+    with pytest.raises(ValueError, match="strict mode needs"):
+        release.build(*arguments, expected_commit="a" * 40)
+    with pytest.raises(ValueError, match="do not pass them too"):
+        release.build(
+            tmp_path / "fomod_logger.dll",
+            *arguments[1:],
+            expected_commit="a" * 40,
+            native_from_release_zip=earlier,
+        )
+    monkeypatch.setattr(release, "NATIVE_IDENTITY", None)
+    with pytest.raises(ValueError, match="native_version, native_commit and"):
+        release.build(
+            *arguments, expected_commit="a" * 40, native_from_release_zip=earlier
+        )
+
+
+def test_manifests_name_the_reused_native_build_only_in_reuse_mode() -> None:
+    release = _release_module()
+    origin = {"version": NATIVE_REUSE_VERSION, "repository_commit": NATIVE_REUSE_COMMIT}
+
+    def binary_manifest(**extra):
+        archive = release.build_binary_archive_bytes(
+            {"plugins/fomod_logger.dll": b"dll"},
+            commit="a" * 40,
+            source_filename="s.zip",
+            source_sha256="b" * 64,
+            runtime_source_components=[],
+            **extra,
+        )
+        with zipfile.ZipFile(io.BytesIO(archive)) as zipped:
+            return json.loads(zipped.read("fomod_logger-manifest.json"))
+
+    def source_manifest(**extra):
+        archive = release.build_source_archive_bytes(
+            {"a.txt": b"a"},
+            uibase_source_files={},
+            commit="a" * 40,
+            runtime_source_components=[],
+            **extra,
+        )
+        with zipfile.ZipFile(io.BytesIO(archive)) as zipped:
+            name = next(
+                item
+                for item in zipped.namelist()
+                if item.endswith("fomod_logger-source-manifest.json")
+            )
+            return json.loads(zipped.read(name))
+
+    for manifest in (binary_manifest, source_manifest):
+        assert "native_binary_from" not in manifest()
+        assert manifest(native_binary_from=origin)["native_binary_from"] == origin
+
+
+# --- Reuse mode against a real Git history ---
+
+NATIVE_SOURCE_FIXTURE = {
+    "src/native.cpp": b"int native() { return 1; }\n",
+    "CMakeLists.txt": b"project(fixture)\n",
+    "CMakePresets.json": b"{}\n",
+    "third_party/lib.txt": b"vendored\n",
+    "packaging/write-native-build-record.cmake": b"# record\n",
+    "packaging/write-resources.cmake": b"# resources\n",
+}
+
+
+def _exact_git(git, directory: Path, *arguments: str) -> str:
+    return subprocess.run(
+        [
+            git,
+            "-C",
+            str(directory),
+            "-c",
+            "core.autocrlf=false",
+            "-c",
+            "user.name=FOMOD Logger Tests",
+            "-c",
+            "user.email=tests@example.invalid",
+            *arguments,
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
+def _commit_exact(git, directory: Path, files: dict, *, first: bool = False) -> str:
+    """Commit exact bytes (no line-ending conversion) and return the commit."""
+
+    if first:
+        subprocess.run([git, "init", str(directory)], check=True, capture_output=True)
+        (directory / ".git" / "info" / "attributes").write_text("* -text\n", encoding="ascii")
+    for name, data in files.items():
+        path = directory / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+    _exact_git(git, directory, "add", "-A")
+    _exact_git(git, directory, "commit", "-m", "fixture")
+    return _exact_git(git, directory, "rev-parse", "HEAD")
+
+
+def _native_history(git, tmp_path, release, **extra_files):
+    """A repository whose first commit is the native build and second a Python-only fix."""
+
+    repository = tmp_path / "repo"
+    files = {**_worktree_source_files(release), **NATIVE_SOURCE_FIXTURE, **extra_files}
+    files["packaging/verify-git-source.py"] = (
+        ROOT / "packaging" / "verify-git-source.py"
+    ).read_bytes()
+    native = _commit_exact(git, repository, files, first=True)
+    plugin = files["python/fomod_logger_plugin.py"] + b"\n# python-only fix\n"
+    fixed = _commit_exact(git, repository, {"python/fomod_logger_plugin.py": plugin})
+    return repository, native, fixed
+
+
+def test_reuse_mode_refuses_changed_native_sources_or_an_unknown_native_commit(
+    tmp_path,
+) -> None:
+    release = _release_module()
+    git = shutil.which("git")
+    if git is None:
+        pytest.skip("Git is required")
+    repository, native, fixed = _native_history(git, tmp_path, release)
+
+    # Python-only change: native sources identical.
+    release.check_native_sources_unchanged(
+        repository, native_commit=native, release_commit=fixed
+    )
+    # Every path the DLL is built from is guarded.
+    targets = {
+        "src": "src/native.cpp",
+        "third_party": "third_party/lib.txt",
+    }
+    for name in release.NATIVE_SOURCE_PATHS:
+        target = targets.get(name, name)
+        data = (repository / target).read_bytes()
+        changed = _commit_exact(git, repository, {target: data + b"changed\n"})
+        with pytest.raises(RuntimeError, match="native sources changed"):
+            release.check_native_sources_unchanged(
+                repository, native_commit=native, release_commit=changed
+            )
+    with pytest.raises(RuntimeError, match="not a commit in this repository"):
+        release.check_native_sources_unchanged(
+            repository, native_commit="9" * 40, release_commit=fixed
+        )
+    with pytest.raises(ValueError, match="40-hex"):
+        release.check_native_sources_unchanged(
+            repository, native_commit="HEAD", release_commit=fixed
+        )
+
+
+def test_reuse_mode_builds_end_to_end_from_a_clean_commit(monkeypatch, tmp_path) -> None:
+    release = _release_module()
+    git = shutil.which("git")
+    if git is None:
+        pytest.skip("Git is required")
+    sqlite_bytes = b"test sqlite runtime"
+    qt_bytes = b"qt source archive"
+    runtime_lock = {
+        **release.RUNTIME_SOURCES,
+        "components": [
+            {
+                "id": "qtbase",
+                "filename": "qtbase.tar.xz",
+                "official_url": "https://example.invalid/qtbase.tar.xz",
+                "size": len(qt_bytes),
+                "sha256": release.sha256(qt_bytes),
+            }
+        ],
+    }
+    sqlite_lock = json.loads(
+        (ROOT / "packaging" / "sqlite-runtime.json").read_text(encoding="utf-8")
+    )
+    sqlite_lock["file_sha256"] = release.sha256(sqlite_bytes)
+    repository, native, fixed = _native_history(
+        git,
+        tmp_path,
+        release,
+        **{
+            "packaging/runtime-sources.json": json.dumps(runtime_lock).encode("utf-8"),
+            "packaging/sqlite-runtime.json": json.dumps(sqlite_lock).encode("utf-8"),
+        },
+    )
+    uibase = tmp_path / "uibase"
+    uibase_commit = _commit_exact(git, uibase, {"src/iplugin.h": b"interface\n"}, first=True)
+    qt_source = tmp_path / "sources" / "qtbase.tar.xz"
+    qt_source.parent.mkdir()
+    qt_source.write_bytes(qt_bytes)
+
+    package, native_bytes, *_ = _earlier_release_zip(
+        release,
+        monkeypatch,
+        tmp_path,
+        commit=native,
+        record_changes={"repository_commit": native},
+    )
+    package_bytes = package.read_bytes()
+    seen = []
+
+    def fake_metadata(path):
+        seen.append(Path(path).read_bytes())
+        return _native_reuse_metadata(PrivateBuild=native)
+
+    monkeypatch.setattr(release, "ROOT", repository)
+    monkeypatch.setattr(release, "RUNTIME_SOURCES", runtime_lock)
+    monkeypatch.setattr(release, "UIBASE_COMMIT", uibase_commit)
+    monkeypatch.setattr(release, "read_native_version_metadata", fake_metadata)
+    monkeypatch.setattr(release, "PACKAGE_VERSION", NATIVE_REUSE_VERSION)
+    monkeypatch.setattr(
+        release, "NATIVE_IDENTITY", _reuse_identity(release, commit=native)
+    )
+    outputs = tmp_path / "outputs"
+    result = release.build(
+        None,
+        None,
+        uibase,
+        None,
+        None,
+        None,
+        {"qtbase": qt_source},
+        outputs / release.BINARY_ARCHIVE_NAME,
+        outputs / release.SOURCE_ARCHIVE_NAME,
+        expected_commit=fixed,
+        native_from_release_zip=package,
+    )
+
+    origin = {"version": NATIVE_REUSE_VERSION, "repository_commit": native}
+    assert result["native_binary_from"] == origin
+    assert result["repository_commit"] == fixed
+    assert result["native_plugin_sha256"] == release.sha256(native_bytes)
+    assert seen == [native_bytes]  # the scratch copy the version resource was read from
+    assert package.read_bytes() == package_bytes  # the earlier package is never touched
+    with zipfile.ZipFile(outputs / release.BINARY_ARCHIVE_NAME) as archive:
+        manifest = json.loads(archive.read("fomod_logger-manifest.json"))
+        assert archive.read("plugins/fomod_logger.dll") == native_bytes
+    with zipfile.ZipFile(outputs / release.SOURCE_ARCHIVE_NAME) as archive:
+        root = release.SOURCE_ARCHIVE_ROOT
+        source_manifest = json.loads(
+            archive.read(f"{root}/fomod_logger-source-manifest.json")
+        )
+        assert f"{root}/src/native.cpp" in archive.namelist()
+    assert manifest["native_binary_from"] == source_manifest["native_binary_from"] == origin
+    assert manifest["repository_commit"] == fixed
+
+    # The same history with a changed native source is refused before anything is written.
+    changed = _commit_exact(git, repository, {"src/native.cpp": b"int native() { return 2; }\n"})
+    refused = tmp_path / "refused"
+    with pytest.raises(RuntimeError, match="native sources changed"):
+        release.build(
+            None,
+            None,
+            uibase,
+            None,
+            None,
+            None,
+            {"qtbase": qt_source},
+            refused / release.BINARY_ARCHIVE_NAME,
+            refused / release.SOURCE_ARCHIVE_NAME,
+            expected_commit=changed,
+            native_from_release_zip=package,
+        )
+    assert not refused.exists()

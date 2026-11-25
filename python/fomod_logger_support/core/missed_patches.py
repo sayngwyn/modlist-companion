@@ -24,6 +24,10 @@ _GENERIC = frozenset({
     "special", "edition", "anniversary", "fallout",
 })
 _MIN_NAME_LENGTH = 4
+# Labels that say a mod is left out or switched off ("Exclude Immersive Armors"): the opposite of a patch for it.
+_LEAVES_OUT = frozenset({"exclude", "excluded", "excludes", "excluding", "skip", "ignore", "ignored",
+                         "without", "disable", "disabled", "none"})
+_LEAVES_OUT_FIRST = frozenset({"no", "not"})
 
 
 def _fold(value: str) -> str:
@@ -32,6 +36,11 @@ def _fold(value: str) -> str:
 
 def _words(value: str) -> str:
     return " ".join(_WORD.split(value.casefold())).strip()
+
+
+def _leaves_out(label: str) -> bool:
+    words = _words(label).split()
+    return bool(words) and (words[0] in _LEAVES_OUT_FIRST or any(word in _LEAVES_OUT for word in words))
 
 
 def _stem(plugin: str) -> str:
@@ -125,9 +134,12 @@ class PatchLookup:
                 for name in names_ if _fold(name) in self.switched_off]
 
     def target(self, evidence: dict[str, Any], label: str, *, own: set[str], mod_name: str,
-               automatic: bool = False) -> tuple[str, list[str], str] | None:
+               automatic: bool = False, available: bool = True) -> tuple[str, list[str], str] | None:
         """(kind, plugins it is made for, state) when the option looks like a patch for plugins in
-        the list, else None. ``state`` is "missing" or "needs-disabled" (it would apply once those are on)."""
+        the list, else None. ``state`` is "missing" or "needs-disabled" (it would apply once those are on).
+
+        A name alone is the weakest evidence, so it is not used for an option the installer did not
+        offer, nor for one whose label says it leaves something out ("Exclude X")."""
 
         plugins = evidence.get("plugins", [])
 
@@ -148,6 +160,8 @@ class PatchLookup:
             (not plugins or "masters" not in evidence)
             and not evidence.get("detects")
             and not automatic
+            and available
+            and not _leaves_out(label)
         ):
             if self._names is None:
                 self._names = _NameIndex(self.load_order)  # once per call, for every install
@@ -190,10 +204,19 @@ def game_plugin_names(
     ]
 
 
+_CHOOSE_ONE = frozenset({"SelectExactlyOne", "SelectAtMostOne"})
+
+
 def _candidates(event: dict[str, Any]) -> Iterable[dict[str, Any]]:
     for step in event.get("steps", []):
         for group in step.get("groups", []):
-            for option in group.get("options", []):
+            options = group.get("options", [])
+            # In a choose-one group the others are alternatives to what was picked, not skipped patches. Picking a
+            # "None" or "Skip" choice picks no patch, so the group's patches still count as skipped then.
+            if group.get("type") in _CHOOSE_ONE and any(
+                    option.get("selected") and not _leaves_out(option.get("name") or "") for option in options):
+                continue
+            for option in options:
                 if option.get("selected"):
                     continue
                 yield {
@@ -342,7 +365,7 @@ def find_missed_patches(
                 continue  # already in the list, e.g. installed from another archive
 
             found = lookup.target(evidence, candidate["label"], own=own, mod_name=mod_name,
-                                  automatic=candidate["automatic"])
+                                  automatic=candidate["automatic"], available=candidate["available"])
             if found is None:
                 continue
             kind, needs, state = found

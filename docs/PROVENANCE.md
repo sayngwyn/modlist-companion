@@ -50,6 +50,10 @@ embed the exact 40-hex repository commit in the native PE version resource and
 record the pinned toolchain and dependency identities in
 `fomod_logger-native-build-record.json`.
 
+When a package reuses an earlier release's native DLL, `native_version` and
+`native_commit` in the identity name that build; see BUILD_CONTRACT.md,
+"Reusing a shipped native build".
+
 The format-2 record is written after linking beside the DLL in the build's
 `src/RelWithDebInfo` directory. It binds that exact DLL and the consumed uibase
 import library and companion DLL by SHA-256. The companion is evidence of the

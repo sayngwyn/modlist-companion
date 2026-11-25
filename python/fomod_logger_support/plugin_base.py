@@ -41,8 +41,8 @@ _PROFILE_FILES = ("plugins.txt", "loadorder.txt", "modlist.txt")
 _PROFILE_DEBOUNCE_MS = 100
 _WINDOW_ERROR_SECONDS = 600
 _PLUGIN_SUFFIXES = (".esp", ".esm", ".esl")
-_PUBLIC_SEMVER = "1.0.0"
-_MO2_VERSION = "1.0.0"
+_PUBLIC_SEMVER = "1.0.1"
+_MO2_VERSION = "1.0.1"
 # MO2 creates a mod's folder after the installer starts; allow for clock rounding.
 _CREATED_SLACK_SECONDS = 120
 # A new-patch check waits for MO2 to list the new mod and its plugins; it gives up after this.
